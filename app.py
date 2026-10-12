@@ -306,13 +306,16 @@ def start_scheduler():
     threading.Thread(target=_scheduler_loop, daemon=True).start()
 
 
-def bootstrap(seed: bool | None = None) -> None:
+def bootstrap(seed: bool | None = None, blocking: bool = False) -> None:
     """
     首次启动准备：若数据目录为空则抓一次全量。
 
-    - 本地：直接可用。
-    - 云上：容器实例是临时的，首次启动会花 ~90 秒抓取；
-      若挂了持久磁盘（DATA_DIR 指向磁盘），只在磁盘为空时抓一次。
+    **必须异步执行（默认 blocking=False）**：
+    首次抓取要 60–120 秒，而云平台（Render / Railway 等）会在容器启动后立刻
+    扫描监听端口；若此时阻塞在抓取上，端口长时间不开放，平台会判定启动失败
+    并返回 502。因此这里默认把抓取丢到后台线程，让 Web 服务立即监听。
+
+    页面在数据就绪前会显示空图表（前端会自动重试），抓完即正常。
     """
     if seed is None:
         seed = _env_flag("AUTO_SEED", True)
@@ -320,17 +323,36 @@ def bootstrap(seed: bool | None = None) -> None:
         return
     if fd.load_meta():
         return
-    fd.log(f"数据目录 {fd.DATA_DIR} 为空，执行首次抓取（约 60–120 秒）…")
-    try:
-        _run_update("startup")
-    except Exception as exc:  # noqa: BLE001
-        fd.log(f"首次抓取失败（页面将显示空数据）: {exc}")
+
+    def _seed_job():
+        fd.log(f"数据目录 {fd.DATA_DIR} 为空，执行首次抓取（约 60–120 秒）…")
+        try:
+            _run_update("startup")
+        except Exception as exc:  # noqa: BLE001
+            fd.log(f"首次抓取失败（页面将显示空数据）: {exc}")
+
+    if blocking:
+        _seed_job()
+        return
+
+    # 已在抓取中（多 worker 同时加载）则不重复启动
+    if _update_state.get("running"):
+        fd.log("已有抓取在进行中，跳过本次启动抓取")
+        return
+    fd.log("首次抓取将在后台进行，Web 服务立即开始监听")
+    threading.Thread(target=_seed_job, daemon=True, name="seed").start()
 
 
 # ---------------------------------------------------------------- 健康检查 / health
 @app.route("/healthz")
 def healthz():
-    """平台健康检查；同时暴露数据新鲜度，便于外部 cron 判断。"""
+    """
+    平台健康检查；同时暴露数据新鲜度，便于外部 cron 判断。
+
+    始终返回 200（只要 Web 进程活着）：云平台用它判断「容器是否该重启」，
+    若在首次抓取的 90 秒内返回非 200，平台会误判为启动失败而反复重启。
+    数据是否就绪由 has_data 字段表达，调用方自行决定。
+    """
     meta = fd.load_meta()
     return jsonify({
         "ok": True,

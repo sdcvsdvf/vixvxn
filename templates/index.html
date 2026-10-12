@@ -1010,6 +1010,33 @@ onSafe('moneyExtra', e=>{
   if(INITIAL.update_state&&INITIAL.update_state.running){
     setStatus(true,'后台更新中… / background update running');
   }
+
+  /* 云端首次启动时，实例先开始监听、抓数据在后台进行（约 90 秒）。
+     这段窗口内页面是空的，这里轮询直到数据就绪再自动渲染，
+     避免用户看到空白页以为坏了。 */
+  const noData = !INITIAL.money || !INITIAL.money.latest ||
+                 !INITIAL.series || !INITIAL.series.VIX || !INITIAL.series.VIX.rows_total;
+  if(noData){
+    setStatus(true,'正在初始化数据（约 1–2 分钟）… / initializing data');
+    let tries=0;
+    const timer=setInterval(async()=>{
+      tries++;
+      try{
+        const r=await fetch('/api/data?days=30');
+        const d=await r.json();
+        const ready = d.money && d.money.latest && d.series && d.series.VIX && d.series.VIX.rows_total;
+        if(ready){
+          clearInterval(timer);
+          for(const k in cache) delete cache[k];
+          await load(currentDays);
+          setStatus(false,'数据就绪 / ready');
+        } else if(tries>=90){
+          clearInterval(timer);
+          setStatus(false,'数据初始化超时，请刷新页面 / timeout, please refresh');
+        }
+      }catch(e){ /* 忽略瞬时错误，继续重试 */ }
+    }, 4000);
+  }
 })();
 </script>
 </body>
