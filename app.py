@@ -222,8 +222,8 @@ def build_payload(days: int | None = None, full: bool = False) -> dict:
     # 宏观经济指标 CPI / PPI / PMI / GDP（月度 / 季度，东方财富官方口径）
     out["macro"] = fm.load_macro()
 
-    # 政治局会议纪要（人工维护 + 自动关联新闻）
-    out["politburo"] = pb.load_politburo()
+    # 政治局会议监测（人民网搜索接口，新华社通稿）
+    out["politburo"] = pb.load()
 
     return out
 

@@ -131,32 +131,47 @@
   .mkv div b{display:block;color:var(--txt);font-size:13.5px;margin-top:3px;
              font-variant-numeric:tabular-nums;font-weight:600}
 
-  /* —— 宏观指标 & 政治局会议 —— */
-  .mcard .badge-row{display:flex;gap:6px;flex-wrap:wrap}
-  .sig{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
-  .sig.loose{background:rgba(34,197,94,.16);color:var(--down)}
-  .sig.tight{background:rgba(255,92,92,.16);color:var(--up)}
-  .sig.neutral{background:#222c3c;color:var(--dim)}
+  /* —— 政治局会议 —— */
+  .pb-head{display:flex;justify-content:space-between;align-items:flex-start;
+           gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .pb-head h3{margin:0 0 4px;font-size:17px}
+  .pb-head p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.7}
 
   .pb-meet{background:var(--panel);border:1px solid var(--line);border-radius:14px;
            padding:16px 18px;margin-bottom:14px}
-  .pb-hd{display:flex;justify-content:space-between;align-items:baseline;
-         gap:12px;flex-wrap:wrap;margin-bottom:4px}
-  .pb-hd h3{margin:0;font-size:16px}
-  .pb-date{font-size:12px;color:var(--dim);white-space:nowrap}
-  .pb-sum{margin:8px 0 12px;font-size:13.5px;color:#cfd9e8;line-height:1.7}
-  .pb-points{display:grid;gap:8px}
-  .pb-pt{display:flex;gap:10px;align-items:flex-start;font-size:13px;
-         line-height:1.65;padding:9px 12px;background:var(--panel2);
-         border-radius:9px;border-left:3px solid var(--line)}
-  .pb-pt .tp{color:var(--dim);flex:0 0 auto;min-width:78px;font-size:12.5px}
-  .pb-pt .tx{flex:1;color:#dbe4f0}
-  .pb-mkt{margin-top:11px;font-size:12.5px;color:var(--dim);
-          padding-top:10px;border-top:1px solid var(--line)}
-  .pb-news{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
-  .pb-news a{display:block;font-size:12.5px;line-height:1.9;color:#9db4d4;
-             text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pb-news a:hover{color:var(--accent);text-decoration:underline}
+  .pb-hd{display:flex;justify-content:space-between;align-items:center;
+         gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .pb-kind{font-size:14.5px;font-weight:600;margin-right:9px}
+  .pb-date-inline{font-size:13px;color:var(--dim);margin-right:9px;
+                  font-variant-numeric:tabular-nums}
+  .pb-link{font-size:12px;color:#9db4d4;text-decoration:none;
+           border:1px solid var(--line);padding:5px 12px;border-radius:8px;
+           white-space:nowrap;transition:.15s}
+  .pb-link:hover{border-color:var(--accent);color:#b9a6ff}
+  .pb-sum{font-size:13.5px;line-height:1.85;color:#cfd9e8;margin-bottom:11px}
+  .pb-topics{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+  .pb-topics.sm{margin:7px 0 0}
+  .ptag{font-size:11.5px;padding:3px 10px;border-radius:999px;
+        background:var(--panel2);color:var(--dim);border:1px solid var(--line);
+        white-space:nowrap}
+  .ptag.hot{background:rgba(255,92,92,.14);color:#ff8a8a;border-color:rgba(255,92,92,.3)}
+  .ptag.sm{font-size:11px;padding:2px 8px}
+  .pb-evidence{font-size:11.5px;color:var(--dim);line-height:1.7}
+
+  .pb-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;
+                 background:var(--panel)}
+  .pb-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:720px}
+  .pb-table th{text-align:left;padding:11px 14px;color:var(--dim);
+               font-weight:500;border-bottom:1px solid var(--line);white-space:nowrap}
+  .pb-table td{padding:12px 14px;border-bottom:1px solid rgba(38,48,63,.5);
+               vertical-align:top;color:#dbe4f0}
+  .pb-table tr:last-child td{border-bottom:0}
+  .pb-table tr:hover td{background:rgba(124,92,255,.05)}
+  .pb-td-date{white-space:nowrap;color:var(--dim);font-variant-numeric:tabular-nums;
+              width:96px}
+  .pb-td-title{line-height:1.75}
+  .pb-td-title a{color:#9db4d4;text-decoration:none;white-space:nowrap}
+  .pb-td-title a:hover{color:var(--accent);text-decoration:underline}
   .pb-empty{background:var(--panel);border:1px dashed var(--line);border-radius:14px;
             padding:22px;text-align:center;color:var(--dim);font-size:13px;line-height:1.9}
 
@@ -915,47 +930,79 @@ function renderPolitburo(){
   const meets=d.meetings||[];
 
   if(!meets.length){
-    box.innerHTML=`<div class="pb-empty">暂无会议纪要。<br>
-      会议要点需人工整理（无公开结构化接口），格式见 <code>data/politburo.json</code>。</div>`;
+    box.innerHTML=`<div class="pb-empty">暂未获取到会议数据。<br>
+      数据来自人民网搜索接口（新华社通稿），首次抓取约需 10 秒。</div>`;
     return;
   }
 
-  const sigCls=s=>s==='偏松'?'loose':(s==='偏紧'?'tight':'neutral');
+  // 距上次会议天数
+  const daysSince = (d0)=>{
+    if(!d0) return '—';
+    const t=new Date(d0+'T00:00:00');
+    return Math.max(0, Math.round((Date.now()-t.getTime())/86400000));
+  };
+  const latest=meets[0];
+  const latestEcon=d.latest_econ || meets.find(m=>m.is_economic);
+  const checked=(d.updated_at||'').slice(0,19);
 
-  let html='';
-  for(const m of meets){
-    const pts=(m.points||[]).map(p=>`
-      <div class="pb-pt">
-        <span class="tp">${esc(p.topic)}</span>
-        <span class="tx">${esc(p.text)}</span>
-        ${p.signal?`<span class="sig ${sigCls(p.signal)}">${esc(p.signal)}</span>`:''}
-      </div>`).join('');
-    html+=`
+  const topicsHtml=(m)=>{
+    const ts=(m.topics||[]).slice(0,12);
+    return ts.length? `<div class="pb-topics">${ts.map(t=>
+      `<span class="ptag${t==='经济议题'?' hot':''}">${esc(t)}</span>`).join('')}</div>` : '';
+  };
+  const card=(m,badge)=>m?`
     <div class="pb-meet">
       <div class="pb-hd">
-        <h3>${esc(m.title||'政治局会议')}${m.is_sample?' <span class="sig neutral">示例</span>':''}</h3>
-        <span class="pb-date">${esc(m.date||'')}</span>
+        <div>
+          <span class="pb-kind">${badge}</span>
+          <span class="pb-date-inline">${esc(m.date||'')}</span>
+          ${m.is_economic?'<span class="ptag hot">经济议题</span>':''}
+        </div>
+        ${m.url?`<a class="pb-link" href="${esc(m.url)}" target="_blank" rel="noopener">官方全文 ↗</a>`:''}
       </div>
       ${m.summary?`<div class="pb-sum">${esc(m.summary)}</div>`:''}
-      ${pts?`<div class="pb-points">${pts}</div>`:''}
-      ${m.markets?`<div class="pb-mkt">市场影响：${esc(m.markets)}</div>`:''}
+      ${topicsHtml(m)}
+      <div class="pb-evidence">议题标注依据：通稿原文（仅表示官方文本中出现该词，非解读）</div>
+    </div>`:'';
+
+  let html=`
+    <div class="pb-head">
+      <div>
+        <h3>中央政治局会议监测</h3>
+        <p>${esc(d.source||'人民网')} · 最近检查 ${esc(checked)} · 共 ${d.meeting_count||meets.length} 次，
+           其中经济议题 ${d.econ_count||0} 次 · 距上次会议 ${daysSince(latest.date)} 天</p>
+      </div>
+      <span class="badge">数据源：新华社通稿</span>
     </div>`;
+
+  html+=card(latest,'最近一次会议');
+  if(latestEcon && (!latest || latestEcon.date!==latest.date)){
+    html+=card(latestEcon,'最近一次经济议题会议');
   }
 
-  const news=(d.news||[]);
-  if(news.length){
-    html+=`<div class="pb-meet"><div class="pb-hd"><h3>相关新闻</h3>
-      <span class="pb-date">更新于 ${esc(d.news_updated_at||'')}</span></div>
-      <div class="pb-news">${news.slice(0,12).map(n=>
-        `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.date)} · ${esc(n.title)}</a>`
-      ).join('')}</div></div>`;
-  }
-
-  if(!d.has_real_content){
-    html+=`<div class="pb-empty" style="margin-top:12px">
-      当前显示的是<b>示例结构</b>，请替换为真实会议内容。<br>
-      编辑 <code>data/politburo.json</code> 后点「立即更新」或刷新即可生效。</div>`;
-  }
+  // 历史列表
+  html+=`
+    <div class="pb-table-wrap">
+      <table class="pb-table">
+        <thead><tr><th>日期</th><th>类型</th><th>官方通稿要点（原样呈现）</th></tr></thead>
+        <tbody>
+        ${meets.slice(0,40).map(m=>`
+          <tr>
+            <td class="pb-td-date">${esc(m.date||'')}</td>
+            <td>${m.is_economic?'<span class="ptag hot">经济议题</span>':'<span class="ptag">其他</span>'}</td>
+            <td>
+              <div class="pb-td-title">${esc(m.summary? m.summary.slice(0,160) : m.title)}
+                ${m.url?`<a href="${esc(m.url)}" target="_blank" rel="noopener">（全文）</a>`:''}</div>
+              ${(m.topics||[]).length?`<div class="pb-topics sm">${(m.topics||[]).slice(0,9).map(t=>
+                `<span class="ptag sm${t==='经济议题'?' hot':''}">${esc(t)}</span>`).join('')}</div>`:''}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="pb-evidence" style="margin-top:10px">
+      ${esc(d.note||'议题标签依据通稿原文关键词匹配，非解读。')}
+    </div>`;
 
   box.innerHTML=html;
 }

@@ -854,12 +854,12 @@ def update_all(full: bool = False) -> dict:
         macro_err = str(exc)
         log(f"宏观数据更新异常: {exc}")
 
-    # 政治局会议相关新闻（辅助信息，抓不到属正常）
+    # 政治局会议（人民网搜索接口，抓取新华社通稿）
     try:
         import politburo
-        politburo.update_news()
+        politburo.update()
     except Exception as exc:  # noqa: BLE001
-        log(f"政治局会议新闻更新异常: {exc}")
+        log(f"政治局会议更新异常: {exc}")
 
     finished = _now_cst()
     ok = (any(r["history_ok"] or r.get("quote_ok") for r in results)
