@@ -32,6 +32,8 @@ import time
 from flask import Flask, jsonify, render_template, request
 
 import fetch_data as fd
+import fetch_macro as fm
+import politburo as pb
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -216,6 +218,13 @@ def build_payload(days: int | None = None, full: bool = False) -> dict:
             "source": "世界银行",
             "note": "年度值，与央行月末口径相差约 1.7~2%（2017 年起）",
         }
+
+    # 宏观经济指标 CPI / PPI / PMI / GDP（月度 / 季度，东方财富官方口径）
+    out["macro"] = fm.load_macro()
+
+    # 政治局会议纪要（人工维护 + 自动关联新闻）
+    out["politburo"] = pb.load_politburo()
+
     return out
 
 

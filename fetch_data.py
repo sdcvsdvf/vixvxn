@@ -842,9 +842,28 @@ def update_all(full: bool = False) -> dict:
                  "rows_added": 0, "rows_total": 0, "first_date": None,
                  "last_date": None, "latest": None}
 
+    # 宏观经济指标（CPI / PPI / PMI / GDP）。
+    # 放在独立的 fetch_macro 模块里；失败不影响行情数据。
+    macro_ok, macro_err = False, None
+    try:
+        import fetch_macro
+        payload = fetch_macro.update_macro()
+        macro_ok = any(not v.get("error")
+                       for v in (payload.get("indicators") or {}).values())
+    except Exception as exc:  # noqa: BLE001
+        macro_err = str(exc)
+        log(f"宏观数据更新异常: {exc}")
+
+    # 政治局会议相关新闻（辅助信息，抓不到属正常）
+    try:
+        import politburo
+        politburo.update_news()
+    except Exception as exc:  # noqa: BLE001
+        log(f"政治局会议新闻更新异常: {exc}")
+
     finished = _now_cst()
     ok = (any(r["history_ok"] or r.get("quote_ok") for r in results)
-          or money["history_ok"] or wb_m2["history_ok"])
+          or money["history_ok"] or wb_m2["history_ok"] or macro_ok)
     meta = {
         "last_update": finished.isoformat(timespec="seconds"),
         "last_update_display": finished.strftime("%Y-%m-%d %H:%M:%S"),
@@ -854,6 +873,7 @@ def update_all(full: bool = False) -> dict:
         "results": results,
         "money": money,
         "wb_m2": wb_m2,
+        "macro": {"ok": macro_ok, "error": macro_err},
     }
     save_meta(meta)
     log(f"===== 更新结束 用时{meta['duration_sec']}秒 成功={ok} =====")

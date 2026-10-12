@@ -131,6 +131,47 @@
   .mkv div b{display:block;color:var(--txt);font-size:13.5px;margin-top:3px;
              font-variant-numeric:tabular-nums;font-weight:600}
 
+  /* —— 宏观指标 & 政治局会议 —— */
+  .mcard .badge-row{display:flex;gap:6px;flex-wrap:wrap}
+  .sig{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .sig.loose{background:rgba(34,197,94,.16);color:var(--down)}
+  .sig.tight{background:rgba(255,92,92,.16);color:var(--up)}
+  .sig.neutral{background:#222c3c;color:var(--dim)}
+
+  .pb-meet{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+           padding:16px 18px;margin-bottom:14px}
+  .pb-hd{display:flex;justify-content:space-between;align-items:baseline;
+         gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  .pb-hd h3{margin:0;font-size:16px}
+  .pb-date{font-size:12px;color:var(--dim);white-space:nowrap}
+  .pb-sum{margin:8px 0 12px;font-size:13.5px;color:#cfd9e8;line-height:1.7}
+  .pb-points{display:grid;gap:8px}
+  .pb-pt{display:flex;gap:10px;align-items:flex-start;font-size:13px;
+         line-height:1.65;padding:9px 12px;background:var(--panel2);
+         border-radius:9px;border-left:3px solid var(--line)}
+  .pb-pt .tp{color:var(--dim);flex:0 0 auto;min-width:78px;font-size:12.5px}
+  .pb-pt .tx{flex:1;color:#dbe4f0}
+  .pb-mkt{margin-top:11px;font-size:12.5px;color:var(--dim);
+          padding-top:10px;border-top:1px solid var(--line)}
+  .pb-news{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .pb-news a{display:block;font-size:12.5px;line-height:1.9;color:#9db4d4;
+             text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pb-news a:hover{color:var(--accent);text-decoration:underline}
+  .pb-empty{background:var(--panel);border:1px dashed var(--line);border-radius:14px;
+            padding:22px;text-align:center;color:var(--dim);font-size:13px;line-height:1.9}
+
+  /* —— 侧栏快捷目录 —— */
+  .side{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:50;
+        display:flex;flex-direction:column;gap:2px;padding:10px 8px;
+        background:rgba(20,27,38,.92);border:1px solid var(--line);border-radius:12px;
+        backdrop-filter:blur(6px);max-width:150px}
+  .side-t{font-size:11px;color:var(--dim);padding:2px 8px 7px;letter-spacing:.5px}
+  .side-link{display:block;padding:6px 10px;border-radius:7px;font-size:12.5px;
+             color:var(--dim);text-decoration:none;transition:.15s;white-space:nowrap}
+  .side-link:hover{background:var(--panel2);color:var(--txt)}
+  .side-link.on{background:rgba(124,92,255,.18);color:#b9a6ff}
+  @media(max-width:1400px){ .side{display:none} }
+
   .foot{font-size:12px;color:var(--dim);line-height:1.9;margin-top:22px}
   .foot code{background:var(--panel2);padding:2px 7px;border-radius:5px;font-size:11.5px}
   .warn{background:#3a2412;border:1px solid #6b4415;color:#ffcf94;
@@ -245,6 +286,39 @@
     <div class="canvas-wrap"><canvas id="mainChart"></canvas></div>
     <div class="axis-hint" id="axisHint"></div>
   </div>
+
+  <!-- 宏观经济指标 -->
+  <div class="sect-title" id="sec-macro">宏观经济指标 CPI / PPI / PMI / GDP</div>
+  <div class="cards mcards" id="macroCards"></div>
+  <div class="chartbox" style="margin-top:0">
+    <div class="chart-head">
+      <div>
+        <h3 style="font-size:18px" id="macroTitle">宏观指标走势</h3>
+        <p class="ph-sub" id="macroSub">数据来源：东方财富（国家统计局口径）</p>
+      </div>
+      <div class="ctrls">
+        <div class="ranges" id="macroPick">
+          <button data-macro="CPI" class="on">CPI</button>
+          <button data-macro="PPI">PPI</button>
+          <button data-macro="PMI">PMI</button>
+          <button data-macro="GDP">GDP</button>
+        </div>
+        <div class="ranges" id="macroRange">
+          <button data-myears="3">3Y</button>
+          <button data-myears="5" class="on">5Y</button>
+          <button data-myears="10">10Y</button>
+          <button data-myears="0">ALL</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend" id="macroLegend"></div>
+    <div class="canvas-wrap md"><canvas id="macroChart"></canvas></div>
+    <div class="axis-hint" id="macroHint"></div>
+  </div>
+
+  <!-- 政治局会议 -->
+  <div class="sect-title" id="sec-politburo">政治局会议 / Politburo Meetings</div>
+  <div id="politburoBox"></div>
 
   <div class="foot">
     <div id="metaLine">—</div>
@@ -657,6 +731,267 @@ function drawMoney(){
                                : `央行月度数据（${M.source||'东方财富'}）· ${M.months[0]} 起（${len} 期）`;
   if(sub) sub.textContent=`${cov} · 最新 ${M.latest.month} · 单位 万亿元`;
 }
+/* ---------- 宏观经济指标 ---------- */
+const MACRO_COLORS = {
+  CPI:{yoy:'#ff9f43', mom:'#8fa0b8', city_yoy:'#54a0ff', rural_yoy:'#2ed573'},
+  PPI:{yoy:'#e056fd', acc:'#8fa0b8'},
+  PMI:{mfg:'#22c55e', nonmfg:'#54a0ff'},
+  GDP:{yoy:'#ff9f43', primary:'#2ed573', secondary:'#54a0ff', tertiary:'#e056fd'},
+};
+let macroChart=null, curMacro='CPI', macroYears=5;
+let macroVisible={};
+
+function macroData(){ return (moneyCache && moneyCache.macro && moneyCache.macro.indicators) || {}; }
+
+function macroPeriodLabel(p, freq){
+  // 2026-08-01 -> 2026-08 ; 2026-06-01(季) -> 2026Q2
+  const [y,m]=p.split('-');
+  if(freq==='季'){
+    const q=Math.ceil(parseInt(m,10)/3);
+    return `${y}Q${q}`;
+  }
+  return `${y}-${m}`;
+}
+
+function renderMacroCards(){
+  const box=document.getElementById('macroCards'); if(!box) return;
+  const ind=macroData();
+  const order=[['CPI','#ff9f43'],['PPI','#e056fd'],['PMI','#22c55e'],['GDP','#54a0ff']];
+  box.innerHTML='';
+  for(const [key,color] of order){
+    const d=ind[key];
+    if(!d || d.error){
+      const el=document.createElement('div');
+      el.className='mcard';
+      el.innerHTML=`<div class="mcard-hd"><div class="sym"><i style="background:${color}"></i>${key}</div></div>
+        <div class="mhint">暂未获取到数据${d&&d.error?'：'+esc(String(d.error).slice(0,60)):''}</div>`;
+      box.appendChild(el);
+      continue;
+    }
+    const latest=d.latest||{};
+    const mainKey=(d.series[0]||{}).key;
+    const mainVal=latest[mainKey];
+    const period=macroPeriodLabel(d.latest_period||'', d.freq);
+    // 同比/环比变化（与上一期比较）
+    const s0=d.series[0];
+    const prev=(s0&&s0.values.length>1)?s0.values[s0.values.length-2]:null;
+    const delta=(mainVal!==null&&prev!==null)?+(mainVal-prev).toFixed(2):null;
+    const dCls=signCls(delta);
+    const mainLabel=s0?s0.label:'';
+    const mainUnit=(s0&&s0.unit)?s0.unit:'';
+
+    const el=document.createElement('div');
+    el.className='mcard';
+    el.innerHTML=`
+      <div class="mcard-hd">
+        <div class="sym"><i style="background:${color}"></i>${key}
+          <small>${esc(d.name_zh)}</small></div>
+        <span class="badge">${esc(d.freq)}度 · ${d.count} 期</span>
+      </div>
+      <div class="big-row">
+        <div class="big" style="color:${color}">${mainVal===null?'—':Number(mainVal).toFixed(2)}
+          <span style="font-size:14px;color:var(--dim);font-weight:500">${mainUnit}</span></div>
+        <div class="chg ${dCls}">${mainLabel} ${delta===null?'—':(delta>0?'+':'')+delta} 较上期</div>
+      </div>
+      <div class="mhint">最新期 <b>${esc(period)}</b> · 共 ${d.count} 期（${esc((d.periods[0]||'').slice(0,7))} 起）</div>
+      <div class="mkv" style="grid-template-columns:repeat(${Math.min(3,d.series.length)},1fr)">
+        ${d.series.slice(1,4).map(s=>{
+          const v=latest[s.key];
+          return `<div>${esc(s.label)}<b>${v===null?'—':Number(v).toFixed(2)}${s.unit||''}</b></div>`;
+        }).join('')}
+      </div>`;
+    box.appendChild(el);
+  }
+}
+
+function renderMacroLegend(){
+  const box=document.getElementById('macroLegend'); if(!box) return;
+  const d=macroData()[curMacro];
+  box.innerHTML='';
+  if(!d || d.error) return;
+  macroVisible = macroVisible || {};
+  for(const s of d.series){
+    const on = macroVisible[curMacro+'.'+s.key] !== false;
+    const c = (MACRO_COLORS[curMacro]||{})[s.key] || '#888';
+    const lab=document.createElement('label');
+    lab.className=on?'on':'';
+    lab.innerHTML=`<input type="checkbox" ${on?'checked':''}>
+      <span class="swatch" style="background:${c}"></span>${esc(s.label)}`;
+    lab.querySelector('input').onchange=e=>{
+      macroVisible[curMacro+'.'+s.key]=e.target.checked;
+      lab.className=e.target.checked?'on':'';
+      drawMacro();
+    };
+    box.appendChild(lab);
+  }
+}
+
+function drawMacro(){
+  const cv=document.getElementById('macroChart'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const d=macroData()[curMacro];
+  const title=document.getElementById('macroTitle');
+  const sub=document.getElementById('macroSub');
+  const hint=document.getElementById('macroHint');
+
+  if(!d || d.error){
+    if(macroChart){ macroChart.destroy(); macroChart=null; }
+    ctx.clearRect(0,0,cv.width,cv.height);
+    if(title) title.textContent='宏观指标走势';
+    if(sub) sub.textContent='数据尚未获取（部署后首次抓取约需 1 分钟）';
+    if(hint) hint.textContent='';
+    return;
+  }
+
+  if(title) title.textContent=`${curMacro} · ${d.name_zh} / ${d.name_en}`;
+  if(sub) sub.textContent=`数据来源：${d.source} · ${d.freq}度 · 最新 ${macroPeriodLabel(d.latest_period,d.freq)} · 共 ${d.count} 期`;
+
+  // 区间裁剪
+  let n=d.periods.length;
+  if(macroYears>0) n=Math.min(n, d.freq==='季' ? macroYears*4 : macroYears*12);
+  const start=Math.max(0, d.periods.length-n);
+  const labels=d.periods.slice(start).map(p=>macroPeriodLabel(p,d.freq));
+
+  const ds=[];
+  for(const s of d.series){
+    if(macroVisible && macroVisible[curMacro+'.'+s.key]===false) continue;
+    const c=(MACRO_COLORS[curMacro]||{})[s.key]||'#888';
+    ds.push({
+      type:'line', label:s.label,
+      data: s.values.slice(start).map((v,i)=>({x:labels[i], y:v})),
+      borderColor:c, backgroundColor:'transparent',
+      borderWidth: s.key===(d.series[0]||{}).key ? 2.2 : 1.6,
+      borderDash: s.key===(d.series[0]||{}).key ? [] : [5,3],
+      pointRadius:0, pointHoverRadius:4, tension:.2, spanGaps:true,
+      yAxisID:'y', _unit:s.unit||'', _digits:2,
+    });
+  }
+
+  // PMI 的 50 荣枯线
+  const annotations=[];
+  if(curMacro==='PMI') annotations.push(50);
+
+  const scales={
+    x:{ticks:{color:'#8fa0b8',font:{size:11},autoSkip:true,maxTicksLimit:12,maxRotation:0},
+       grid:{color:'rgba(38,48,63,.55)'}},
+    y:{position:'left',ticks:{color:'#8fa0b8',font:{size:11},
+         callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:2})},
+       grid:{color:'rgba(38,48,63,.55)'},
+       ...axisRangeOf(ds,'y'),
+       title:{display:true,text: d.unit||'',color:'#8fa0b8',font:{size:11}}}
+  };
+
+  if(macroChart) macroChart.destroy();
+  macroChart=new Chart(ctx,{
+    type:'line',
+    data:{datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#1b2432',borderColor:'#26303f',borderWidth:1,padding:10,
+          callbacks:{label:c=>{
+            const v=c.parsed.y;
+            if(v===null||v===undefined) return ` ${c.dataset.label}: —`;
+            return ` ${c.dataset.label}: ${Number(v).toFixed(2)}${c.dataset._unit||''}`;
+          }}}},
+      scales}
+  });
+
+  const notes={
+    CPI:'CPI 同比 >0 为通胀、<0 为通缩。环比反映短期动能，与同比背离时需留意基数效应。',
+    PPI:'PPI 为工业品出厂价。PPI 与 CPI 的剪刀差可观察中下游企业利润压力。',
+    PMI:'PMI <b>50 为荣枯线</b>：高于 50 表示扩张，低于 50 表示收缩。制造业与非制造业分开看更准确。',
+    GDP:'GDP 为累计值。三次产业同比可观察结构变化（如服务业相对工业的强弱）。',
+  };
+  if(hint) hint.innerHTML=notes[curMacro]||'';
+}
+
+/* ---------- 政治局会议 ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderPolitburo(){
+  const box=document.getElementById('politburoBox'); if(!box) return;
+  const d=(moneyCache && moneyCache.politburo) || {};
+  const meets=d.meetings||[];
+
+  if(!meets.length){
+    box.innerHTML=`<div class="pb-empty">暂无会议纪要。<br>
+      会议要点需人工整理（无公开结构化接口），格式见 <code>data/politburo.json</code>。</div>`;
+    return;
+  }
+
+  const sigCls=s=>s==='偏松'?'loose':(s==='偏紧'?'tight':'neutral');
+
+  let html='';
+  for(const m of meets){
+    const pts=(m.points||[]).map(p=>`
+      <div class="pb-pt">
+        <span class="tp">${esc(p.topic)}</span>
+        <span class="tx">${esc(p.text)}</span>
+        ${p.signal?`<span class="sig ${sigCls(p.signal)}">${esc(p.signal)}</span>`:''}
+      </div>`).join('');
+    html+=`
+    <div class="pb-meet">
+      <div class="pb-hd">
+        <h3>${esc(m.title||'政治局会议')}${m.is_sample?' <span class="sig neutral">示例</span>':''}</h3>
+        <span class="pb-date">${esc(m.date||'')}</span>
+      </div>
+      ${m.summary?`<div class="pb-sum">${esc(m.summary)}</div>`:''}
+      ${pts?`<div class="pb-points">${pts}</div>`:''}
+      ${m.markets?`<div class="pb-mkt">市场影响：${esc(m.markets)}</div>`:''}
+    </div>`;
+  }
+
+  const news=(d.news||[]);
+  if(news.length){
+    html+=`<div class="pb-meet"><div class="pb-hd"><h3>相关新闻</h3>
+      <span class="pb-date">更新于 ${esc(d.news_updated_at||'')}</span></div>
+      <div class="pb-news">${news.slice(0,12).map(n=>
+        `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.date)} · ${esc(n.title)}</a>`
+      ).join('')}</div></div>`;
+  }
+
+  if(!d.has_real_content){
+    html+=`<div class="pb-empty" style="margin-top:12px">
+      当前显示的是<b>示例结构</b>，请替换为真实会议内容。<br>
+      编辑 <code>data/politburo.json</code> 后点「立即更新」或刷新即可生效。</div>`;
+  }
+
+  box.innerHTML=html;
+}
+
+/* ---------- 侧栏快捷目录 ---------- */
+function initSideNav(){
+  const secs=[
+    ['sec-overview','VIX / VXN'],
+    ['sec-money','M0 / M1 / M2'],
+    ['sec-macro','CPI / PPI / PMI / GDP'],
+    ['sec-politburo','政治局会议'],
+  ].filter(([id])=>document.getElementById(id));
+  if(secs.length<2) return;
+
+  const nav=document.createElement('nav');
+  nav.className='side';
+  nav.id='sideNav';
+  nav.innerHTML='<div class="side-t">快捷目录</div>'+
+    secs.map(([id,label])=>`<a class="side-link" href="#${id}" data-nav="${id}">${label}</a>`).join('');
+  document.body.appendChild(nav);
+
+  const links=[...nav.querySelectorAll('.side-link')];
+  const upd=()=>{
+    const y=window.scrollY+110;
+    let cur=secs[0][0];
+    for(const [id] of secs){
+      const el=document.getElementById(id);
+      if(el && el.getBoundingClientRect().top+window.scrollY<=y) cur=id;
+    }
+    links.forEach(a=>a.classList.toggle('on',a.dataset.nav===cur));
+  };
+  window.addEventListener('scroll',upd,{passive:true});
+  window.addEventListener('resize',upd,{passive:true});
+  upd();
+}
+
 /* ---------- 主图 ---------- */
 /* 取所有序列日期的并集作为横轴。
    美股与 A 股交易日历不同（各自的节假日休市），若只用其中一个市场的日期，
@@ -842,6 +1177,7 @@ async function load(days){
   moneyCache=cache[key];
   renderCards(cache[key]); renderLegend(); renderMeta(cache[key]);
   renderMoneyCards(); draw(); drawMoney();
+  renderMacroCards(); renderMacroLegend(); drawMacro(); renderPolitburo();
 }
 
 async function doUpdate(){
@@ -953,6 +1289,25 @@ onSafe('moneyExtra', e=>{
   drawMoney();
 });
 
+/* 宏观指标：切换指标 */
+onSafe('macroPick', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#macroPick button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  curMacro=b.dataset.macro;
+  renderMacroLegend(); drawMacro();
+});
+/* 宏观指标：切换区间 */
+onSafe('macroRange', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const m=parseInt(b.dataset.myears,10);
+  if(isNaN(m)) return;
+  document.querySelectorAll('#macroRange button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  macroYears=m;
+  drawMacro();
+});
+
 // 初始渲染（?days=365&mode=pct&myears=10&hide=SPX,NDX）
 (function(){
   const qs=new URLSearchParams(location.search);
@@ -1006,6 +1361,8 @@ onSafe('moneyExtra', e=>{
   cache[currentDays]=INITIAL; moneyCache=INITIAL;
   renderCards(INITIAL); renderLegend(); renderMeta(INITIAL);
   renderMoneyCards(); draw(); drawMoney();
+  renderMacroCards(); renderMacroLegend(); drawMacro(); renderPolitburo();
+  initSideNav();
 
   if(INITIAL.update_state&&INITIAL.update_state.running){
     setStatus(true,'后台更新中… / background update running');
