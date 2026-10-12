@@ -1,0 +1,52 @@
+# Render.com 部署配置  |  one-click deploy on Render
+#
+# 用法：
+#   1. 把本目录推到 GitHub 仓库
+#   2. Render → New → Blueprint → 选该仓库（会自动读取本文件）
+#
+# 免费套餐说明：
+#   - Web Service 免费实例闲置 15 分钟后休眠，下次访问约 30–60 秒冷启动
+#   - 免费实例没有持久磁盘，容器重启后本地写入会丢失
+#     因此这里用「镜像内置数据 + 每日定时抓取」的方式，配合 cron job 更新
+services:
+  - type: web
+    name: vixvxn-dashboard
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore            # 离国内较近；可选 oregon / frankfurt 等
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: HOST
+        value: 0.0.0.0
+      # 免费实例无持久磁盘，用容器内目录即可（重启后重新抓取）
+      - key: DATA_DIR
+        value: /data
+      - key: AUTO_SEED
+        value: "1"
+      # 关闭进程内定时器：免费实例会休眠，定时器不可靠，改用下面的 cron job
+      - key: VIXVXN_SCHEDULER
+        value: "0"
+
+  # 每天定时抓取并更新数据。
+  # 免费套餐的 cron job 与 web 服务不共享文件系统，
+  # 所以它的作用是「保活 + 触发」：调用 web 服务的更新接口。
+  - type: cron
+    name: vixvxn-daily-update
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    schedule: "10 22 * * *"      # UTC 22:10 = 北京时间 06:10
+    dockerCommand: >
+      python -c "import os,urllib.request;
+      url=os.environ['TARGET_URL']+'/api/update'+(('?token='+os.environ['ADMIN_TOKEN']) if os.environ.get('ADMIN_TOKEN') else '');
+      print(urllib.request.urlopen(urllib.request.Request(url,method='POST'),timeout=120).read().decode())"
+    envVars:
+      - key: TARGET_URL
+        sync: false              # 部署后在面板填入 web 服务的网址
+      - key: ADMIN_TOKEN
+        sync: false              # 可选；与 web 服务设成同一个值

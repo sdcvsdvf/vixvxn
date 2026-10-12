@@ -1,0 +1,14 @@
+{
+  "symbol": "SPX",
+  "source_timestamp": "2026-10-12 06:48:06",
+  "last_trade_time": "2026-10-09T16:14:59",
+  "price": 7811.54,
+  "change": 46.18,
+  "change_percent": 0.5912,
+  "open": 7786.3599,
+  "high": 7820.5698,
+  "low": 7779.3398,
+  "prev_close": 7811.54,
+  "iv30": 12.276,
+  "fetched_at": "2026-10-12T14:48:50+08:00"
+}

@@ -1,0 +1,30 @@
+# 本地 / 自有服务器容器编排  |  docker compose for self-hosting
+#
+# 启动:
+#     docker compose up -d --build
+#     访问 http://localhost:8801
+#
+# 数据持久化在具名卷 vixdata 中，容器重建不丢数据。
+services:
+  web:
+    build: .
+    image: vixvxn-dashboard:latest
+    container_name: vixvxn
+    restart: unless-stopped
+    ports:
+      - "8801:8080"
+    environment:
+      PORT: "8080"
+      HOST: "0.0.0.0"
+      DATA_DIR: /data
+      LOG_DIR: /data/logs
+      AUTO_SEED: "1"
+      # 进程内每天 06:10（北京时间）自动抓取；容器常驻时可用
+      VIXVXN_SCHEDULER: "1"
+      # 取消注释并设置后，手动更新接口需要 token
+      # ADMIN_TOKEN: "change-me"
+    volumes:
+      - vixdata:/data
+
+volumes:
+  vixdata:

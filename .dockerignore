@@ -1,0 +1,34 @@
+# 构建镜像时排除的文件  |  files excluded from the image build
+.git
+.gitignore
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 本地开发/临时文件
+_*.py
+_*.js
+_*.png
+_*.html
+*.tmp
+screenshot.png
+static/_*
+
+# 各类编辑器与系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 文档（运行时不需要）
+README.md
+*.md
+
+# 数据目录：不入库（.gitignore 已排除），
+# 容器启动时由 AUTO_SEED 自动抓取一次（约 90 秒）。
+# 想做到「秒开」可先把本地 data/ 放进构建上下文，再注释下一行。
+data/
+logs/

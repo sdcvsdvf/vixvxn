@@ -1,0 +1,31 @@
+# 运行时生成的数据与日志
+#
+# 这些文件是可再生的（启动或定时任务会从官方接口重新抓取），
+# 因此不入库，避免仓库随数据增长而膨胀、也避免提交过期数据。
+# 云端首次启动会自动抓取一次（AUTO_SEED=1，约 90 秒）。
+#
+# 若希望镜像自带数据、实现「秒开」，可注释掉下面两行再构建：
+data/
+logs/
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 本地开发/临时文件
+_*.py
+_*.js
+_*.png
+_*.html
+screenshot.png
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

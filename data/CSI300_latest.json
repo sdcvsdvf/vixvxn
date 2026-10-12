@@ -1,0 +1,14 @@
+{
+  "symbol": "CSI300",
+  "source_timestamp": "2026-10-12",
+  "last_trade_time": "2026-10-12",
+  "price": 4290.01,
+  "change": -27.24,
+  "change_percent": -0.631,
+  "open": 4305.91,
+  "high": 4334.29,
+  "low": 4279.71,
+  "prev_close": 4317.25,
+  "iv30": null,
+  "fetched_at": "2026-10-12T14:49:22+08:00"
+}

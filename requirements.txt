@@ -1,0 +1,6 @@
+# 运行时依赖  |  runtime dependencies
+#
+# 云端（Docker / PaaS）会安装这里的全部依赖。
+# 生产环境用 gunicorn，不要用 Flask 自带的开发服务器。
+Flask>=3.0,<4.0
+gunicorn>=21.2,<24.0

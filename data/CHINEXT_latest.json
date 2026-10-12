@@ -1,0 +1,14 @@
+{
+  "symbol": "CHINEXT",
+  "source_timestamp": "2026-10-12",
+  "last_trade_time": "2026-10-12",
+  "price": 2970.13,
+  "change": -73.2,
+  "change_percent": -2.405,
+  "open": 3023.51,
+  "high": 3049.34,
+  "low": 2962.24,
+  "prev_close": 3043.33,
+  "iv30": null,
+  "fetched_at": "2026-10-12T14:49:28+08:00"
+}

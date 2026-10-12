@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全球市场仪表盘 · Global Market Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#141b26; --panel2:#1b2432; --line:#26303f;
+    --txt:#e6edf7; --dim:#8fa0b8; --up:#ff5c5c; --down:#22c55e;
+    --vix:#ff9f43; --vxn:#54a0ff; --spx:#2ed573; --ndx:#e056fd;
+    --sh:#ffd93d; --csi:#ff6b9d; --cnxt:#4ecdc4;
+    --m0:#f7b731; --m1:#4b7bec; --m2:#a55eea;
+    --accent:#7c5cff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+  .wrap{max-width:1340px;margin:0 auto;padding:22px 18px 60px}
+
+  header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+         justify-content:space-between;margin-bottom:18px}
+  h1{margin:0;font-size:22px;letter-spacing:.3px}
+  h1 span{color:var(--dim);font-size:13px;font-weight:400;display:block;margin-top:4px}
+  .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;
+         padding:9px 16px;font-size:14px;cursor:pointer;transition:.15s}
+  button:hover{filter:brightness(1.12)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:#222c3c;color:var(--txt)}
+
+  .status{font-size:12px;color:var(--dim)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+       background:var(--down);margin-right:6px}
+  .dot.busy{background:var(--vix);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.25}}
+
+  .sect-title{font-size:13px;color:var(--dim);margin:22px 0 10px;letter-spacing:.5px;
+              display:flex;align-items:center;gap:8px}
+  .sect-title::after{content:"";flex:1;height:1px;background:var(--line)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+        padding:16px 18px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--accent)}
+  .card.c-VIX::before{background:var(--vix)} .card.c-VXN::before{background:var(--vxn)}
+  .card.c-SPX::before{background:var(--spx)} .card.c-NDX::before{background:var(--ndx)}
+  .card.c-SHCOMP::before{background:var(--sh)} .card.c-CSI300::before{background:var(--csi)}
+  .card.c-CHINEXT::before{background:var(--cnxt)}
+  .card h2{margin:0 0 2px;font-size:16px;display:flex;align-items:center;gap:7px}
+  .card h2 small{font-size:11px;color:var(--dim);font-weight:400}
+  .price{font-size:30px;font-weight:700;line-height:1.2;margin:6px 0 2px;
+         font-variant-numeric:tabular-nums}
+  .chg{font-size:14px;font-weight:600;display:flex;gap:9px;align-items:baseline}
+  .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--dim)}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;
+           margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .metrics div{font-size:11.5px;color:var(--dim)}
+  .metrics div b{display:block;color:var(--txt);font-size:13px;margin-top:3px;
+                 font-variant-numeric:tabular-nums;font-weight:600}
+
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+            padding:16px 18px;margin-top:18px}
+  .chart-head{display:flex;justify-content:space-between;align-items:center;
+              gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .chart-head h3{margin:0;font-size:15px}
+  .chart-head h3 em{font-style:normal;color:var(--dim);font-size:12px;font-weight:400}
+  .ctrls{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .ranges{display:flex;gap:6px}
+  .ranges button{background:#222c3c;color:var(--dim);padding:6px 12px;font-size:12.5px}
+  .ranges button.on{background:var(--accent);color:#fff}
+  .legend{display:flex;gap:13px;flex-wrap:wrap;align-items:center;
+          padding:10px 2px 2px;font-size:13px}
+  .legend label{display:flex;align-items:center;gap:6px;cursor:pointer;
+                user-select:none;color:var(--dim)}
+  .legend label.on{color:var(--txt)}
+  .legend input{accent-color:var(--accent);cursor:pointer;margin:0}
+  .swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .axis-hint{font-size:11.5px;color:var(--dim);margin-top:8px}
+  .axis-hint b{color:var(--txt)}
+  .canvas-wrap{position:relative;height:380px}
+  .canvas-wrap.sm{height:210px}
+  .canvas-wrap.md{height:290px}
+
+  .money-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+              gap:12px;margin-bottom:16px}
+  .mcard{background:var(--panel2);border:1px solid var(--line);border-radius:11px;
+         padding:13px 15px}
+  .mcard .lbl{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
+  .mcard .val{font-size:23px;font-weight:700;margin:5px 0 3px;
+              font-variant-numeric:tabular-nums}
+  .mcard .sub{font-size:12px;color:var(--dim)}
+  .mcard .sub b{font-variant-numeric:tabular-nums}
+
+  /* —— 货币供应面板（对齐参考站点布局） —— */
+  .ph-sub{margin:3px 0 0;font-size:12.5px;color:var(--dim);font-weight:400}
+  .ovlbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+          padding:9px 12px;margin-bottom:9px;
+          background:var(--panel2);border:1px solid var(--line);border-radius:10px}
+  .mlabel{font-size:12.5px;color:var(--dim);flex:0 0 auto;min-width:74px}
+  .msep{width:1px;height:20px;background:var(--line)}
+  .ovl-hint{margin-left:auto;font-size:11.5px;color:var(--dim)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{background:transparent;color:var(--dim);border:1px solid var(--line);
+        border-radius:999px;padding:5px 13px;font-size:12.5px;cursor:pointer;
+        display:flex;align-items:center;gap:6px;transition:.15s}
+  .chip:hover{border-color:var(--accent);color:var(--txt)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .chip:disabled{opacity:.4;cursor:not-allowed}
+
+  .mcards{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:16px}
+  .mcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+         padding:15px 17px;position:relative;overflow:hidden}
+  .mcard-hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .mcard-hd .sym{font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:7px}
+  .mcard-hd .sym i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .mcard-hd .sym small{font-size:11.5px;color:var(--dim);font-weight:400}
+  .badge{font-size:11.5px;padding:3px 9px;border-radius:999px;
+         background:#222c3c;color:var(--dim);white-space:nowrap}
+  .badge.l5{background:rgba(255,92,92,.16);color:var(--up)}
+  .badge.l2{background:rgba(34,197,94,.16);color:var(--down)}
+  .big-row{display:flex;align-items:baseline;gap:12px;margin:10px 0 4px;flex-wrap:wrap}
+  .big{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+  .mhint{font-size:11.5px;color:var(--dim);line-height:1.6}
+  .mkv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;
+       padding-top:11px;border-top:1px solid var(--line)}
+  .mkv div{font-size:11.5px;color:var(--dim)}
+  .mkv div b{display:block;color:var(--txt);font-size:13.5px;margin-top:3px;
+             font-variant-numeric:tabular-nums;font-weight:600}
+
+  .foot{font-size:12px;color:var(--dim);line-height:1.9;margin-top:22px}
+  .foot code{background:var(--panel2);padding:2px 7px;border-radius:5px;font-size:11.5px}
+  .warn{background:#3a2412;border:1px solid #6b4415;color:#ffcf94;
+        padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none}
+  @media(max-width:600px){.price{font-size:24px}.metrics{grid-template-columns:repeat(2,1fr)}
+    .canvas-wrap{height:280px}.wrap{padding:16px 12px 40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>全球市场仪表盘 · Global Market Dashboard
+      <small>波动率 · 中美指数 · 中国货币供应 M0/M1/M2 ｜ 数据来源：CBOE、纳斯达克、东方财富</small></h1>
+    <div class="actions">
+      <span class="status" id="status"><span class="dot" id="dot"></span><span id="statusText">就绪</span></span>
+      <button id="btnUpdate">立即更新 / Refresh</button>
+      <button class="ghost" id="btnReload">重载数据 / Reload</button>
+    </div>
+  </header>
+
+  <div class="warn" id="warn"></div>
+
+  <div class="sect-title">波动率指数 / Volatility Indices</div>
+  <div class="cards" id="cards-vol"></div>
+
+  <div class="sect-title">美国指数 / US Indices</div>
+  <div class="cards" id="cards-us"></div>
+
+  <div class="sect-title">中国指数 / China Indices</div>
+  <div class="cards" id="cards-cn"></div>
+
+  <!-- 货币供应 -->
+  <div class="sect-title" id="sec-money">中国货币供应量 M0 / M1 / M2</div>
+  <div class="cards mcards" id="moneyCards"></div>
+
+  <div class="chartbox" style="margin-top:0">
+    <div class="chart-head" style="margin-bottom:14px">
+      <div>
+        <h3 style="font-size:18px">中国货币供应量 M0 / M1 / M2</h3>
+        <p class="ph-sub" id="moneySub">央行月度数据 · 单位 万亿元</p>
+      </div>
+      <div class="ctrls">
+        <div class="ranges" id="moneyMode">
+          <button data-mmode="stock" class="on">存量</button>
+          <button data-mmode="yoy">同比</button>
+          <button data-mmode="scissors">剪刀差</button>
+        </div>
+        <div class="ranges" id="moneyRanges">
+          <button data-myears="1">1Y</button>
+          <button data-myears="3">3Y</button>
+          <button data-myears="5" class="on">5Y</button>
+          <button data-myears="10">10Y</button>
+          <button data-myears="0">ALL</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ovlbar" id="moneyPickBar">
+      <span class="mlabel">显示</span>
+      <div class="chips" id="moneyShow">
+        <button class="chip on" data-mshow="m1m2">M1 + M2</button>
+        <button class="chip" data-mshow="m2">仅 M2</button>
+        <button class="chip" data-mshow="m1">仅 M1</button>
+        <button class="chip" data-mshow="m0">仅 M0</button>
+      </div>
+    </div>
+
+    <div class="ovlbar">
+      <span class="mlabel">叠加 A 股指数</span>
+      <div class="chips" id="moneyOverlay">
+        <button class="chip" data-midx="SHCOMP"><i style="background:#c0392b"></i>上证指数</button>
+        <button class="chip" data-midx="CSI300"><i style="background:#16a085"></i>沪深300</button>
+        <button class="chip" data-midx="CHINEXT"><i style="background:#8e44ad"></i>创业板指</button>
+      </div>
+      <span class="msep"></span>
+      <div class="chips" id="moneyExtra">
+        <button class="chip" data-mextra="norm">归一化对比</button>
+        <button class="chip" data-mextra="dual">M1 单独轴</button>
+        <button class="chip" data-mextra="bar">柱状图</button>
+      </div>
+      <span class="ovl-hint" id="moneyOvlHint"></span>
+    </div>
+
+    <div class="legend" id="moneyLegend"></div>
+    <div class="canvas-wrap md"><canvas id="moneyChart"></canvas></div>
+    <div class="axis-hint" id="moneyHint"></div>
+    <div class="axis-hint" style="color:#ffcf94">⚠ <b>2024-01 起 M1 出现台阶式跳升</b>（环比 +64.6%），这是央行修订 M1 统计口径
+      （纳入个人活期存款与非银支付机构备付金）所致，<b>并非真实资金投放</b>；比较该时点前后的 M1 需留意口径差异。
+      官方环比字段与跳变一致，可交叉验证。</div>
+  </div>
+
+  <!-- 主图 -->
+  <div class="chartbox">
+    <div class="chart-head">
+      <h3>走势对比 / Trend Comparison <em id="modeHint"></em></h3>
+      <div class="ctrls">
+        <div class="ranges" id="ranges">
+          <button data-days="30">30天</button>
+          <button data-days="90">90天</button>
+          <button data-days="365" class="on">1年</button>
+          <button data-days="1825">5年</button>
+          <button data-days="0">全部 / All</button>
+        </div>
+        <div class="ranges" id="modes">
+          <button data-mode="raw" class="on">原始值 / Raw</button>
+          <button data-mode="pct">归一化 % / Normalized</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="canvas-wrap"><canvas id="mainChart"></canvas></div>
+    <div class="axis-hint" id="axisHint"></div>
+  </div>
+
+  <div class="foot">
+    <div id="metaLine">—</div>
+    <div>数据来源 / Sources: VIX、VXN、SPX 与全部美股报价来自 <b>CBOE 官方</b>；NDX 历史来自 <b>纳斯达克官方</b> API；
+      中国指数与货币供应来自 <b>东方财富</b>。</div>
+    <div>历史区间 / History: VIX 自 1990 · VXN 自 2009 · SPX 自 1975 · NDX 自 1996 · 上证自 1990 · 沪深300 自 2005 · 创业板指 自 2010 · M0/M1/M2 自 2008。</div>
+    <div>自动更新 / Auto-update: 网站进程内每日 <b>06:10</b>（北京时间）自动抓取；亦可由 Windows 计划任务执行
+      <code>python fetch_data.py</code> 独立更新。</div>
+  </div>
+</div>
+
+<script>
+const INITIAL = {{ initial|safe }};
+const SPECS = INITIAL.specs || {};
+const ORDER = INITIAL.order || Object.keys(SPECS);
+const GROUPS = INITIAL.groups || {};
+const COLORS = { VIX:'#ff9f43', VXN:'#54a0ff', SPX:'#2ed573', NDX:'#e056fd',
+                 SHCOMP:'#ffd93d', CSI300:'#ff6b9d', CHINEXT:'#4ecdc4' };
+const MCOLORS = { m0:'#f7b731', m1:'#4b7bec', m2:'#a55eea' };
+const MONEY_KEYS = ['m0','m1','m2'];
+
+let chart=null, ratioChart=null, moneyChart=null;
+let currentDays=365, currentMode='raw';
+let visible={};
+let cache={}, moneyCache=null, cacheSeries={};
+
+ORDER.forEach(s=>visible[s]=true);
+
+function fmt(v,d){ d=(d===undefined)?2:d;
+  return (v===null||v===undefined||isNaN(v))?'—':Number(v).toLocaleString('en-US',
+    {minimumFractionDigits:d,maximumFractionDigits:d}); }
+function signCls(v){ return v>0?'up':(v<0?'down':'flat'); }
+function signStr(v,d){ d=(d===undefined)?2:d;
+  if(v===null||v===undefined||isNaN(v)) return '—';
+  return (v>0?'+':'')+Number(v).toFixed(d); }
+
+function renderCards(data){
+  cacheSeries = data.series||{};
+  const boxes={};
+  for(const g of Object.keys(GROUPS)){
+    const el=document.getElementById('cards-'+g);
+    if(el){ el.innerHTML=''; boxes[g]=el; }
+  }
+  for(const sym of ORDER){
+    const s=cacheSeries[sym]; if(!s) continue;
+    const box=boxes[s.group]||boxes[Object.keys(boxes)[0]];
+    if(!box) continue;
+    const q=s.quote||{};
+    const price=(q.price!==null&&q.price!==undefined&&q.price!==0)?q.price:s.last_close;
+    const chg=s.change, pct=s.change_percent;
+    const arrow=chg>0?'▲':(chg<0?'▼':'—');
+    const div=document.createElement('div');
+    div.className='card c-'+sym;
+    div.innerHTML=`
+      <h2><span style="color:${COLORS[sym]||'#888'}">●</span> ${sym}
+        <small>${s.name_zh} · ${s.name_en}</small></h2>
+      <div class="price" style="color:${COLORS[sym]||'#888'}">${fmt(price)}</div>
+      <div class="chg ${signCls(chg)}">${arrow} ${signStr(chg)} <span>(${signStr(pct)}%)</span></div>
+      <div class="metrics">
+        <div>今开 / Open<b>${fmt(q.open||s.last_open)}</b></div>
+        <div>最高 / High<b>${fmt(q.high||s.last_high)}</b></div>
+        <div>最低 / Low<b>${fmt(q.low||s.last_low)}</b></div>
+        <div>昨收 / Prev<b>${fmt(q.prev_close)}</b></div>
+      </div>
+      <div class="metrics" style="margin-top:9px;padding-top:9px">
+        <div>最新日 / Latest<b>${s.last_date||'—'}</b></div>
+        <div>天数 / Rows<b>${s.rows_total}</b></div>
+        <div>起始 / Since<b>${s.first_date||'—'}</b></div>
+        <div>快照 / Snapshot<b>${(q.fetched_at||'—').replace('T',' ')}</b></div>
+      </div>`;
+    box.appendChild(div);
+  }
+}
+
+/* ---------- 货币供应（对齐参考站点） ---------- */
+const MONEY_COLOR = {m2:'#6a58d8', m1:'#0d9488', m0:'#df8c22', scissors:'#df4a37'};
+/* A 股宽基指数（叠加到货币供应月线），右轴走点位 */
+const CN_IDX = {
+  SHCOMP: {name:'上证指数', color:'#c0392b'},
+  CSI300: {name:'沪深300', color:'#16a085'},
+  CHINEXT:{name:'创业板指', color:'#8e44ad'},
+};
+const MONEY_RANGE = [
+  {key:'1Y',  n:12},       {key:'3Y',  n:36},
+  {key:'5Y',  n:60},       {key:'10Y', n:120},
+  {key:'ALL', n:Infinity},
+];
+const MONEY_PICK = [
+  {key:'m1m2', label:'M1 + M2'}, {key:'m2', label:'仅 M2'},
+  {key:'m1',   label:'仅 M1'},   {key:'m0', label:'仅 M0'},
+];
+
+let curMTab='stock';        // stock | yoy | scissors
+let curMRange=60;           // 月数
+let mMoneyPick='m1m2';
+let mOverlay={SHCOMP:false, CSI300:false, CHINEXT:false};
+let mNorm=false;            // 归一化：以区间首月为基准换算成相对 %
+let mScissorsBar=false;     // 剪刀差视图：柱状/线
+let mDualAxis=false;        // M1 单独走右轴（M1 约为 M2 的 1/3，同轴会被压平）
+
+function moneyExists(){ return !!(moneyCache && moneyCache.money && moneyCache.money.latest); }
+function hasCnIdx(c){ return !!(moneyCache && moneyCache.cn_monthly && moneyCache.cn_monthly[c]); }
+
+/* 区间起点索引 */
+function sliceIdx(n, len){ return n===Infinity ? 0 : Math.max(0, len-n); }
+
+/* 归一化：以数组首个有效值为基准，换算成相对涨跌 % */
+function normPct(arr){
+  const base = arr.find(v=>v!==null && v!==undefined && v!==0);
+  if(!base) return arr.map(()=>null);
+  return arr.map(v=>(v===null||v===undefined)?null:+( (v/base-1)*100 ).toFixed(2));
+}
+
+/* 月度序列 → 该月 A 股指数的收盘值。
+   使用 cn_monthly（全量月线），而不是 series 里被 days 裁剪过的日线。 */
+function monthEndClose(sym, months){
+  const m = moneyCache && moneyCache.cn_monthly && moneyCache.cn_monthly[sym];
+  if(!m) return months.map(()=>null);
+  const idx={};
+  m.months.forEach((mo,i)=>{ idx[mo]=m.closes[i]; });
+  return months.map(mo=> (mo in idx ? idx[mo] : null));
+}
+
+/* 坐标轴范围（1/2/5 步长取整，避免下界被压到 0） */
+function niceStep(range, targetTicks){
+  if(!(range>0)) return 1;
+  const raw=range/Math.max(1,targetTicks);
+  const exp=Math.floor(Math.log10(raw));
+  const f=raw/Math.pow(10,exp);
+  const nf = f<=1?1 : f<=2?2 : f<=5?5 : 10;
+  return nf*Math.pow(10,exp);
+}
+function axisRangeOf(datasets, axis){
+  let lo=Infinity, hi=-Infinity;
+  for(const ds of datasets){
+    if((ds.yAxisID||'y')!==axis) continue;
+    for(const p of ds.data){
+      /* 数据点可能是原始数值，也可能是 {x,y} 时间轴点，两种都要支持 */
+      const v = (p && typeof p==='object') ? p.y : p;
+      if(v===null||v===undefined||isNaN(v)) continue;
+      if(v<lo) lo=v; if(v>hi) hi=v;
+    }
+  }
+  if(lo===Infinity) return {};
+  if(lo===hi){ lo-=1; hi+=1; }
+  const step=niceStep(hi-lo, 20);
+  const a=Math.floor(lo/step)*step, b=Math.ceil(hi/step)*step;
+  const dec=step>=1?0:Math.min(4,Math.ceil(-Math.log10(step)));
+  return {min:+a.toFixed(dec), max:+b.toFixed(dec)};
+}
+
+function mOverlayHint(){
+  if(mNorm) return '归一化：各序列以区间首月 = 0%';
+  const on=Object.keys(CN_IDX).filter(c=>mOverlay[c] && hasCnIdx(c));
+  return on.length ? '指数走右轴（点位）' : '';
+}
+
+/* —— 货币卡片（M2 / M1 / M0 顺序，对齐参考站点） —— */
+function moneyCardHtml(k, cn, color){
+  const M = (moneyCache&&moneyCache.money)||{};
+  const it = M.latest && M.latest[k];
+  if(!it || it.value===null || it.value===undefined) return '';
+  const yoyCls = signCls(it.yoy);
+  const momCls = signCls(it.mom);
+  const badgeCls = it.yoy>0?'l5':(it.yoy<0?'l2':'');
+  const deltaTxt = (it.yoy_delta===null||it.yoy_delta===undefined)
+      ? '' : `较上月 ${it.yoy_delta>0?'+':''}${Number(it.yoy_delta).toFixed(2)}pct`;
+  return `
+  <div class="mcard">
+    <div class="mcard-hd">
+      <div class="sym"><i style="background:${color}"></i>${k.toUpperCase()}
+        <small>${cn}</small></div>
+      <span class="badge ${badgeCls}">同比 ${signStr(it.yoy,1)}%</span>
+    </div>
+    <div class="big-row">
+      <div class="big" style="color:${color}">${fmt(it.value,2)}
+        <span style="font-size:15px;color:var(--dim);font-weight:500"> 万亿</span></div>
+      <div class="chg ${momCls}">环比 ${signStr(it.mom,2)}%</div>
+    </div>
+    <div class="mhint">${deltaTxt?deltaTxt+' · ':''}存量 ${fmt(it.value_yi,0)} 亿元（${M.latest.month}）</div>
+    <div class="mkv">
+      <div>同比<b class="${yoyCls}">${signStr(it.yoy,1)}%</b></div>
+      <div>环比<b class="${momCls}">${signStr(it.mom,2)}%</b></div>
+      <div>上月同比<b>${it.prev_yoy===null||it.prev_yoy===undefined?'—':Number(it.prev_yoy).toFixed(1)+'%'}</b></div>
+    </div>
+  </div>`;
+}
+
+function renderMoneyCards(){
+  const box=document.getElementById('moneyCards'); if(!box) return;
+  box.innerHTML = moneyCardHtml('m2','M2 广义货币', MONEY_COLOR.m2)
+                + moneyCardHtml('m1','M1 狭义货币', MONEY_COLOR.m1)
+                + moneyCardHtml('m0','M0 流通中现金', MONEY_COLOR.m0);
+}
+
+/* —— 货币图表 —— */
+function drawMoney(){
+  if(!moneyExists()){
+    const cv=document.getElementById('moneyChart');
+    if(cv){ const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height); }
+    return;
+  }
+  const M = moneyCache.money;
+  const len = M.months.length;
+  const start = sliceIdx(curMRange, len);
+  const months = M.months.slice(start);
+  const ctx = document.getElementById('moneyChart').getContext('2d');
+
+  const mk = (label, data, color, opt) => {
+    opt = opt || {};
+    return {
+      type: opt.bar ? 'bar' : 'line',
+      label, data,
+      borderColor: color, borderWidth: opt.width||2,
+      borderDash: opt.dash||[],
+      backgroundColor: opt.bar ? color+'99' : (opt.fill ? color+'22' : 'transparent'),
+      pointRadius:0, pointHoverRadius:4, tension:.2,
+      fill: !!opt.fill, yAxisID: opt.axis||'y', spanGaps:true,
+      _digits: opt.digits===undefined?2:opt.digits,
+      _unit: opt.unit||'', _thou: !!opt.thou,
+    };
+  };
+  const mkN = (label, arr, color, opt) =>
+      mk(label, normPct(arr.slice(start)), color,
+         Object.assign({axis:'y', unit:'%', digits:1}, opt||{}));
+
+  /* 显示组合：m1m2 → M1+M2（不含 M0）；否则只画选中那条 */
+  const pick = k => (mMoneyPick==='m1m2' ? (k==='m1'||k==='m2') : (mMoneyPick===k));
+
+  let datasets=[], yTitle='', digits=2, unit='';
+  const useBar = mScissorsBar && curMTab==='scissors';
+
+  if(mNorm){
+    yTitle='相对涨跌 %'; unit='%'; digits=1;
+    if(curMTab==='scissors'){
+      mkN('M1−M2 剪刀差', M.scissors, MONEY_COLOR.scissors, {fill:true, width:2});
+      datasets = datasets; // mkN 内部 push
+    } else {
+      const key = curMTab==='stock' ? 'value' : 'yoy';
+      if(pick('m2')) datasets.push(mkN('M2', M.m2[key], MONEY_COLOR.m2, {fill:curMTab==='stock', width:2.2}));
+      if(pick('m1')) datasets.push(mkN('M1', M.m1[key], MONEY_COLOR.m1, {fill:false, width:2}));
+      if(pick('m0')) datasets.push(mkN('M0', M.m0[key], MONEY_COLOR.m0, {fill:false, width:1.8}));
+    }
+  } else if(curMTab==='scissors'){
+    yTitle='剪刀差 pct'; unit='pct'; digits=2;
+    const sc = M.scissors.slice(start);
+    if(useBar){
+      datasets.push({type:'bar', label:'M1−M2 剪刀差', data:sc,
+        backgroundColor: sc.map(v=> (v===null||v===undefined)?'#666':(v>=0?'rgba(223,74,55,.65)':'rgba(13,148,136,.65)')),
+        borderColor:'transparent', yAxisID:'y', _digits:2, _unit:'pct'});
+    } else {
+      datasets.push(mk('M1−M2 剪刀差', sc, MONEY_COLOR.scissors, {fill:true, width:2, unit:'pct'}));
+    }
+  } else {
+    const isStock = curMTab==='stock';
+    yTitle = isStock ? '万亿元' : '%'; unit = isStock?'万亿':'%'; digits = isStock?2:1;
+    const key = isStock ? 'value' : 'yoy';
+    /* M2 填充：仅在「单独显示 M2」时填充到 0。
+       若与 M1 同图，M2 的填充会把坐标轴基线拉到 0，
+       导致 M1（约为 M2 的 1/3）被压在最底部，几乎看不清。 */
+    const fillM2 = isStock && mMoneyPick==='m2';
+    if(pick('m2')) datasets.push(mk('M2', M.m2[key].slice(start), MONEY_COLOR.m2,
+        {fill:fillM2, width:2.2, axis:'y', unit, digits}));
+    if(pick('m1')) datasets.push(mk('M1', M.m1[key].slice(start), MONEY_COLOR.m1,
+        {fill:false, width:2, axis:'y', unit, digits}));
+    if(pick('m0')) datasets.push(mk('M0', M.m0[key].slice(start), MONEY_COLOR.m0,
+        {fill:false, width:1.8, axis:'y', unit, digits}));
+  }
+
+  /* 叠加 A 股指数：归一化时与货币同轴（相对%），否则走右轴（点位） */
+  for(const c of Object.keys(CN_IDX)){
+    if(!mOverlay[c] || !hasCnIdx(c)) continue;
+    const closes = monthEndClose(c, months);
+    if(mNorm){
+      datasets.push(mk(CN_IDX[c].name, normPct(closes), CN_IDX[c].color,
+        {axis:'y', width:1.7, dash:[5,3], unit:'%', digits:1}));
+    } else {
+      datasets.push(mk(CN_IDX[c].name, closes, CN_IDX[c].color,
+        {axis:'y1', width:1.7, dash:[5,3], unit:'点', digits:2, thou:true}));
+    }
+  }
+
+  /* 世界银行年度 M2（1977 起）：仅在「存量」视图显示，补足央行月度数之前的年份。
+     口径不同（年度值 vs 月末余额），因此用点线单独绘制并标注。 */
+  let labels = months.slice();
+  const ext = M.m2_annual;
+  const showExt = ext && curMTab==='stock' && (curMRange===Infinity);
+  /* 年度延伸段单独成点（yearly），不与月度混在一个数组里，
+     否则类目轴会把 31 个年度点与 224 个月度点等距排列，时间刻度严重失真。 */
+  let yearlyPts = [];
+  if(showExt){
+    const pre = ext.years.filter(y=>y < months[0]);
+    if(pre.length){
+      const idx={}; ext.years.forEach((y,i)=>{ idx[y]=ext.value[i]; });
+      yearlyPts = pre.map(y=>({x:y+'-12-31', y:idx[y]}));
+    }
+  }
+
+  /* 统一改为「时间轴」：每个点带上真实日期 x，Chart.js 才会按真实时间比例排布。
+     原先是类目轴（category），31 个年度点与 224 个月度点被等距排列，
+     导致 1977–2008 只占一小段、时间刻度错乱。 */
+  const moneyDatasets = datasets.map(ds=>{
+    const isYearly = ds.label && ds.label.indexOf('年度') >= 0;
+    if(isYearly){
+      return Object.assign({}, ds, {data: yearlyPts});
+    }
+    return Object.assign({}, ds, {
+      data: ds.data.map((v,i)=>({x: months[i] + '-01', y: v})),
+    });
+  });
+  if(yearlyPts.length){
+    moneyDatasets.push({
+      type:'line', label:'M2 年度（世界银行）',
+      data: yearlyPts,
+      borderColor: MONEY_COLOR.m2, borderWidth:2, borderDash:[2,3],
+      pointRadius:0, pointHoverRadius:3, tension:.2, fill:false,
+      yAxisID:'y', spanGaps:true, _digits:2, _unit:'万亿',
+    });
+  }
+  datasets = moneyDatasets;
+
+  /* 图例（可点击开关） */
+  const lbox=document.getElementById('moneyLegend');
+  lbox.innerHTML='';
+  datasets.forEach((d,i)=>{
+    const lab=document.createElement('label');
+    lab.className = d.hidden ? '' : 'on';
+    lab.innerHTML=`<input type="checkbox" ${d.hidden?'':'checked'}>
+      <span class="swatch" style="background:${d.borderColor||'#888'}"></span>${d.label}`;
+    lab.querySelector('input').onchange=e=>{
+      moneyChart.setDatasetVisibility(i, e.target.checked);
+      lab.className=e.target.checked?'on':'';
+      moneyChart.update();
+    };
+    lbox.appendChild(lab);
+  });
+
+  const scales={
+    /* 时间轴：需 Chart.js 的日期适配器（luxon）。若 CDN 未加载成功则回退到类目轴，
+       保证图表仍可显示（只是时间刻度按等距排布）。 */
+    x:(typeof luxon !== 'undefined')
+       ? {type:'time',
+          time:{unit:'year', tooltipFormat:'yyyy-MM',
+                displayFormats:{year:'yyyy', month:'yyyy-MM', day:'yyyy-MM'}},
+          ticks:{color:'#8fa0b8',font:{size:11},autoSkip:true,maxTicksLimit:12,maxRotation:0},
+          grid:{color:'rgba(38,48,63,.55)'}}
+       : {ticks:{color:'#8fa0b8',maxTicksLimit:11,autoSkip:true,font:{size:11}},
+          grid:{color:'rgba(38,48,63,.55)'}},
+    y:{position:'left',ticks:{color:'#8fa0b8',font:{size:11},
+         callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:digits})},
+       grid:{color:'rgba(38,48,63,.55)'},
+       ...axisRangeOf(datasets,'y'),
+       title:{display:true,text:yTitle,color:'#8fa0b8',font:{size:11}}}
+  };
+  /* 叠加上证等 A 股指数时，右轴留给指数点位；否则右轴可用于 M1（双轴模式）。 */
+  const idxOn = Object.keys(CN_IDX).some(c=>mOverlay[c] && hasCnIdx(c));
+  const useRightForM1 = (mDualAxis && !mNorm && curMTab==='stock' && !idxOn);
+  if(useRightForM1){
+    const m1ds = datasets.find(d=>d.label==='M1');
+    if(m1ds) m1ds.yAxisID='y1';
+  }
+
+  if(datasets.some(d=>(d.yAxisID||'y')==='y1') && !idxOn){
+    scales.y1={position:'right',grid:{drawOnChartArea:false},
+      ticks:{color:'#8fa0b8',font:{size:11},
+        callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:0})},
+      ...axisRangeOf(datasets,'y1'),
+      title:{display:true,text:'M1 (万亿)',color:'#8fa0b8',font:{size:11}}};
+  } else if(datasets.some(d=>(d.yAxisID||'y')==='y1')){
+    scales.y1={position:'right',grid:{drawOnChartArea:false},
+      ticks:{color:'#8fa0b8',font:{size:11},
+        callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:0})},
+      ...axisRangeOf(datasets,'y1'),
+      title:{display:true,text:'指数点位',color:'#8fa0b8',font:{size:11}}};
+  }
+
+  if(moneyChart) moneyChart.destroy();
+  moneyChart=new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#1b2432',borderColor:'#26303f',borderWidth:1,padding:10,
+          callbacks:{label:c=>{
+            const v=c.parsed.y;
+            if(v===null||v===undefined) return ` ${c.dataset.label}: —`;
+            const d=c.dataset._digits===undefined?2:c.dataset._digits;
+            const s=Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+            return ` ${c.dataset.label}: ${s} ${c.dataset._unit||''}`.trimEnd();
+          }}}},
+      scales
+    }
+  });
+
+  /* 提示文字 */
+  const notes={
+    stock:'单位 <b>万亿元</b>。M0 量级远小于 M1/M2，单看 M0 时可切「归一化对比」观察增速。',
+    yoy:'同比增速（%）。M1 与 M2 同比之差即<b>剪刀差</b>，反映资金活期化程度。',
+    scissors:'<b>M1−M2 剪刀差</b>（同比之差，单位 pct）：正值走阔=资金活期化、企业投资意愿偏强；负值=资金定期化、观望情绪浓。'
+  };
+  const extra=[];
+  if(mOverlayHint()) extra.push(mOverlayHint());
+  if(showExt && ext) extra.push(`已并入 <b>世界银行年度 M2（${ext.years[0]} 起，点线）</b>——年度口径，与央行月末值约差 1.7~2%`);
+  document.getElementById('moneyHint').innerHTML=notes[curMTab]+(extra.length?' · '+extra.join(' · '):'');
+  const sub=document.getElementById('moneySub');
+  const cov = (showExt && ext) ? `央行月度 ${M.months[0]} 起（${len} 期）· 年度延伸 ${ext.years[0]} 起`
+                               : `央行月度数据（${M.source||'东方财富'}）· ${M.months[0]} 起（${len} 期）`;
+  if(sub) sub.textContent=`${cov} · 最新 ${M.latest.month} · 单位 万亿元`;
+}
+/* ---------- 主图 ---------- */
+/* 取所有序列日期的并集作为横轴。
+   美股与 A 股交易日历不同（各自的节假日休市），若只用其中一个市场的日期，
+   另一个市场在对方休市日的行情会被丢掉。并集 + spanGaps 可保留全部数据。 */
+function align(data){
+  const series=data.series||{};
+  const set=new Set();
+  for(const sym of ORDER){
+    const s=series[sym];
+    if(s&&s.dates) s.dates.forEach(d=>set.add(d));
+  }
+  const dates=Array.from(set).sort();
+  const maps={};
+  for(const sym of ORDER){
+    const s=series[sym]; const mp={};
+    if(s) s.dates.forEach((d,i)=>{ mp[d]=s.closes[i]; });
+    maps[sym]=mp;
+  }
+  return {dates,maps};
+}
+
+/* 取「好看的」刻度步长（1/2/5 × 10^n） */
+function niceStep(range, targetTicks){
+  if(!(range>0)) return 1;
+  const raw=range/Math.max(1,targetTicks);
+  const exp=Math.floor(Math.log10(raw));
+  const f=raw/Math.pow(10,exp);
+  const nf = f<=1?1 : f<=2?2 : f<=5?5 : 10;
+  return nf*Math.pow(10,exp);
+}
+
+/* 按可见数据算出某条轴的取值范围。
+   用 1/2/5 步长把上下界对齐到整数刻度，既避免 7.98 / 86.25 这类零碎标签，
+   也避免步长过大把下界压到 0、白白浪费一半绘图区。 */
+function axisRange(datasets,axis){
+  let lo=Infinity, hi=-Infinity;
+  for(const ds of datasets){
+    if(ds.yAxisID!==axis) continue;
+    for(const v of ds.data){
+      if(v===null||v===undefined||isNaN(v)) continue;
+      if(v<lo) lo=v; if(v>hi) hi=v;
+    }
+  }
+  if(lo===Infinity) return {};
+  if(lo===hi){ lo-=1; hi+=1; }
+
+  // 目标刻度数取得较多，步长才会足够细，下界不会被压到 0 而浪费一半绘图区。
+  // 实际显示的标签密度由各轴的 maxTicksLimit 控制。
+  const step=niceStep(hi-lo, 20);
+  const a=Math.floor(lo/step)*step;
+  const b=Math.ceil(hi/step)*step;
+  const dec=step>=1?0:Math.min(4,Math.ceil(-Math.log10(step)));
+  return {min:+a.toFixed(dec), max:+b.toFixed(dec)};
+}
+
+/* 坐标轴刻度：大数用 万 / 万亿 缩写，避免出现 32,674.05 这类长标签 */
+function tickShort(v){
+  const n=Number(v);
+  if(!isFinite(n)) return '';
+  const a=Math.abs(n);
+  if(a>=1e8) return (n/1e8).toFixed(a>=1e9?0:1)+'亿';
+  if(a>=1e4) return (n/1e4).toFixed(a>=1e5?0:1)+'万';
+  if(a>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:0});
+  return String(+n.toFixed(2));
+}
+
+/* 主图只画波动率与美国指数；中国三大指数改为叠加在货币供应图上。 */
+const MAIN_SYMBOLS = ORDER.filter(s=>(SPECS[s]&&SPECS[s].group)!=='cn');
+
+function draw(){
+  const data=cache[currentDays]; if(!data) return;
+  const {dates,maps}=align(data);
+  const grpOf=s=>(SPECS[s]&&SPECS[s].group)||'us';
+
+  // 原始值模式下按分组用不同坐标轴：
+  //   左轴 = 波动率(vol) · 右轴 = 美国指数(us)
+  // 波动率(≈15) 与指数(≈7,800/30,900) 量级差距过大，共用一轴会把波动率压平。
+  const AXIS={vol:'y', us:'y1'};
+  const datasets=[];
+  const used={y:false,y1:false};
+
+  for(const sym of MAIN_SYMBOLS){
+    if(!visible[sym]) continue;
+    const grp=grpOf(sym);
+    const vol=(grp==='vol');
+    let vals=dates.map(d=>(d in maps[sym]?maps[sym][d]:null));
+    if(currentMode==='pct'){
+      const base=vals.find(v=>v!==null&&v!==undefined&&v!==0);
+      vals=vals.map(v=>(v===null||v===undefined||!base)?null:+(v/base*100).toFixed(3));
+    }
+    const axis=(currentMode==='pct')?'y':AXIS[grp];
+    used[axis]=true;
+    datasets.push({
+      label:sym, data:vals, yAxisID:axis,
+      borderColor:COLORS[sym]||'#888',
+      backgroundColor:'transparent',
+      borderWidth: vol?1.9:2.1,
+      borderDash: vol?[]:[5,3],
+      pointRadius:0, pointHoverRadius:4, tension:.15, spanGaps:true, fill:false
+    });
+  }
+
+  const nAxes=(currentMode==='pct')?1:[used.y,used.y1].filter(Boolean).length;
+  document.getElementById('modeHint').textContent =
+    currentMode==='pct' ? '归一化：区间起点 = 100'
+                        : (nAxes>1?`${nAxes} 条独立坐标轴`:'单轴');
+  document.getElementById('axisHint').innerHTML = currentMode==='pct'
+    ? '全部序列以所选区间第一个有效值归一为 <b>100</b>，直接比较涨跌幅（跨市场对比推荐此模式）。'
+    : (nAxes>1
+        ? '左轴 <b>波动率</b>（VIX/VXN）· 右轴 <b>美国指数</b>（SPX/NDX）。实线=波动率，虚线=指数。'
+        : '单轴显示。');
+  const scales={
+    x:{grid:{color:'rgba(38,48,63,.55)'},ticks:{color:'#8fa0b8',maxTicksLimit:10,autoSkip:true}},
+    y:{position:'left',grid:{color:'rgba(38,48,63,.55)'},
+       ticks:{color:'#8fa0b8',callback:v=>currentMode==='pct'?v:tickShort(v)},
+       ...axisRange(datasets,'y'),
+       title:{display:true,text:currentMode==='pct'?'归一化 (起点=100)':'波动率 / Volatility',
+              color:'#8fa0b8',font:{size:11}}}
+  };
+  if(currentMode==='raw' && used.y1){
+    scales.y1={position:'right',grid:{drawOnChartArea:false},
+               ticks:{color:'#8fa0b8',callback:v=>tickShort(v)},
+               ...axisRange(datasets,'y1'),
+               title:{display:true,text:'美国指数 / US',color:'#8fa0b8',font:{size:11}}};
+  }
+
+  if(chart) chart.destroy();
+  chart=new Chart(document.getElementById('mainChart'),{
+    type:'line',
+    data:{labels:dates,datasets},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:350},
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#1b2432',borderColor:'#26303f',borderWidth:1,
+          titleColor:'#e6edf7',bodyColor:'#e6edf7',padding:10,
+          callbacks:{label:c=>` ${c.dataset.label}: ${
+            c.parsed.y===null?'—':Number(c.parsed.y).toLocaleString('en-US',
+              {maximumFractionDigits:2})}${currentMode==='pct'?' (起点=100)':''}`}}},
+      scales}
+  });
+}
+
+function renderLegend(){
+  const box=document.getElementById('legend');
+  box.innerHTML='';
+  for(const sym of MAIN_SYMBOLS){
+    const s=cacheSeries[sym]; if(!s) continue;
+    const lab=document.createElement('label');
+    lab.className=visible[sym]?'on':'';
+    lab.innerHTML=`<input type="checkbox" ${visible[sym]?'checked':''}>
+      <span class="swatch" style="background:${COLORS[sym]||'#888'}"></span>${sym}`;
+    lab.querySelector('input').onchange=e=>{
+      visible[sym]=e.target.checked; lab.className=visible[sym]?'on':''; draw();
+    };
+    box.appendChild(lab);
+  }
+}
+
+function renderMeta(data){
+  const m=data.meta||{};
+  const el=document.getElementById('metaLine');
+  if(!m.last_update_display){ el.textContent='尚未更新 / No data yet'; return; }
+  const parts=(m.results||[]).map(r=>`${r.symbol} ${r.rows_total}`);
+  const mm=m.money?` · M0/M1/M2 ${m.money.rows_total} 期`:'';
+  el.innerHTML=`上次更新 / Last update: <b>${m.last_update_display}</b>（北京时间，用时 ${m.duration_sec??'—'} 秒）· ${parts.join(' · ')}${mm}`;
+  const bad=(m.results||[]).filter(r=>!r.history_ok);
+  if(m.money&&!m.money.history_ok) bad.push({symbol:'MONEY',history_error:m.money.history_error});
+  const warn=document.getElementById('warn');
+  if(bad.length){
+    warn.style.display='block';
+    warn.textContent='部分数据抓取失败，页面仍显示本地缓存：'+
+      bad.map(r=>`${r.symbol}(${r.history_error||'未知错误'})`).join('；');
+  } else warn.style.display='none';
+}
+
+async function load(days){
+  currentDays=(days===undefined)?currentDays:days;
+  const key=String(currentDays);
+  if(!cache[key]){
+    const url=currentDays===0?'/api/data?full=1':`/api/data?days=${currentDays}`;
+    cache[key]=await (await fetch(url)).json();
+  }
+  moneyCache=cache[key];
+  renderCards(cache[key]); renderLegend(); renderMeta(cache[key]);
+  renderMoneyCards(); draw(); drawMoney();
+}
+
+async function doUpdate(){
+  const btn=document.getElementById('btnUpdate');
+  btn.disabled=true; setStatus(true,'正在抓取数据… / Fetching…');
+  try{
+    /* 若部署时设置了 ADMIN_TOKEN，可通过 ?token=xxx 传给按钮 */
+    const tk=new URLSearchParams(location.search).get('token');
+    const j=await (await fetch('/api/update'+(tk?('?token='+encodeURIComponent(tk)):''),
+                              {method:'POST'})).json();
+    if(!j.ok){ setStatus(false,j.message); btn.disabled=false; return; }
+    for(let i=0;i<160;i++){
+      await new Promise(s=>setTimeout(s,1500));
+      const s=await (await fetch('/api/data?days=30')).json();
+      if(!s.update_state||!s.update_state.running){
+        for(const k in cache) delete cache[k];
+        await load(currentDays);
+        setStatus(false,'更新完成 / Updated'); btn.disabled=false; return;
+      }
+    }
+    setStatus(false,'更新超时，请稍后重载 / Timeout');
+  }catch(e){ setStatus(false,'更新失败 / Failed: '+e.message); }
+  btn.disabled=false;
+}
+
+function setStatus(busy,text){
+  document.getElementById('dot').className='dot'+(busy?' busy':'');
+  document.getElementById('statusText').textContent=text;
+  document.getElementById('btnUpdate').disabled=!!busy;
+}
+
+/* 安全包装：任何一个控件出错都不应让整块面板失去响应 */
+function onSafe(id, fn){
+  const el=document.getElementById(id);
+  if(!el){ console.warn('缺少元素 #'+id); return; }
+  el.addEventListener('click', e=>{
+    try{ fn(e); }
+    catch(err){ console.error('[ui] '+id+' 处理失败:', err); }
+  });
+}
+
+document.getElementById('btnUpdate').onclick=doUpdate;
+document.getElementById('btnReload').onclick=async()=>{
+  for(const k in cache) delete cache[k];
+  await load(currentDays); setStatus(false,'已重载 / Reloaded');
+};
+onSafe('ranges', async e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#ranges button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); await load(parseInt(b.dataset.days,10));
+});
+onSafe('modes', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); currentMode=b.dataset.mode; draw();
+});
+
+onSafe('moneyRanges', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  /* HTML 属性是 data-myears（不是 data-myairs），datasets 键名必须完全对应，
+     否则 parseInt 得到 NaN，处理函数会直接 return，表现就是「点了没反应」。 */
+  const months = parseInt(b.dataset.myears, 10);
+  if(isNaN(months)){ console.warn('[money] 区间按钮缺少 data-myears:', b.textContent); return; }
+  const row = MONEY_RANGE.find(r => (r.n===Infinity ? 0 : r.n/12) === months);
+  if(!row){ console.warn('[money] 未匹配到区间:', months); return; }
+  document.querySelectorAll('#moneyRanges button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  curMRange = row.n;
+  drawMoney();
+});
+
+/* 存量 / 同比 / 剪刀差 */
+onSafe('moneyMode', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#moneyMode button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); curMTab=b.dataset.mmode;
+  // 剪刀差视图下隐藏「显示」选择条（与参考站点一致）
+  const pb=document.getElementById('moneyPickBar');
+  if(pb) pb.style.display = (curMTab==='scissors') ? 'none' : '';
+  drawMoney();
+});
+/* 显示哪些货币序列 */
+onSafe('moneyShow', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#moneyShow button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); mMoneyPick=b.dataset.mshow;
+  // 组合变化时清掉旧的图例显隐状态，避免出现空图
+  if(moneyChart){ moneyChart.data.datasets.forEach((d,i)=>moneyChart.setDatasetVisibility(i,true)); }
+  drawMoney();
+});
+/* 叠加 A 股指数（可多选） */
+onSafe('moneyOverlay', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const sym=b.dataset.midx;
+  mOverlay[sym]=!mOverlay[sym];
+  b.classList.toggle('on', mOverlay[sym]);
+  drawMoney();
+});
+/* 归一化 / M1 单独轴 / 柱状图 */
+onSafe('moneyExtra', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.mextra==='norm'){
+    mNorm=!mNorm; b.classList.toggle('on',mNorm);
+  } else if(b.dataset.mextra==='dual'){
+    mDualAxis=!mDualAxis; b.classList.toggle('on',mDualAxis);
+  } else {
+    mScissorsBar=!mScissorsBar; b.classList.toggle('on',mScissorsBar);
+  }
+  drawMoney();
+});
+
+// 初始渲染（?days=365&mode=pct&myears=10&hide=SPX,NDX）
+(function(){
+  const qs=new URLSearchParams(location.search);
+  const d=parseInt(qs.get('days'),10);
+  if(!isNaN(d)&&[30,90,365,1825,0].includes(d)){
+    currentDays=d;
+    document.querySelectorAll('#ranges button').forEach(b=>
+      b.classList.toggle('on',parseInt(b.dataset.days,10)===d));
+  }
+  const m=qs.get('mode');
+  if(m==='pct'||m==='raw'){
+    currentMode=m;
+    document.querySelectorAll('#modes button').forEach(b=>
+      b.classList.toggle('on',b.dataset.mode===m));
+  }
+  const my=qs.get('mrange');
+  if(my && MONEY_RANGE.some(r=>r.key===my)){
+    curMRange = MONEY_RANGE.find(r=>r.key===my).n;
+    document.querySelectorAll('#moneyRanges button').forEach(b=>
+      b.classList.toggle('on', b.dataset.myears===my));
+  }
+  const mm=qs.get('mmode');
+  if(['stock','yoy','scissors'].includes(mm)){
+    curMTab=mm;
+    document.querySelectorAll('#moneyMode button').forEach(b=>
+      b.classList.toggle('on', b.dataset.mmode===mm));
+    if(mm==='scissors') document.getElementById('moneyPickBar').style.display='none';
+  }
+  const mp=qs.get('mpick');
+  if(mp && MONEY_PICK.some(p=>p.key===mp)){
+    mMoneyPick=mp;
+    document.querySelectorAll('#moneyShow button').forEach(b=>
+      b.classList.toggle('on', b.dataset.mshow===mp));
+  }
+  const mo=(qs.get('midx')||'').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean)
+    .filter(s=>s in CN_IDX);
+  mo.forEach(sym=>{
+    mOverlay[sym]=true;
+    const btn=document.querySelector(`#moneyOverlay button[data-midx="${sym}"]`);
+    if(btn) btn.classList.add('on');
+  });
+  if(qs.get('mnorm')==='1'){ mNorm=true;
+    document.querySelector('#moneyExtra button[data-mextra="norm"]').classList.add('on'); }
+  if(qs.get('mdual')==='1'){ mDualAxis=true;
+    document.querySelector('#moneyExtra button[data-mextra="dual"]').classList.add('on'); }
+  if(qs.get('mbar')==='1'){ mScissorsBar=true;
+    document.querySelector('#moneyExtra button[data-mextra="bar"]').classList.add('on'); }
+  (qs.get('hide')||'').split(',').map(s=>s.trim().toUpperCase()).filter(Boolean)
+    .forEach(s=>{ if(s in visible) visible[s]=false; });
+
+  cache[currentDays]=INITIAL; moneyCache=INITIAL;
+  renderCards(INITIAL); renderLegend(); renderMeta(INITIAL);
+  renderMoneyCards(); draw(); drawMoney();
+
+  if(INITIAL.update_state&&INITIAL.update_state.running){
+    setStatus(true,'后台更新中… / background update running');
+  }
+})();
+</script>
+</body>
+</html>
