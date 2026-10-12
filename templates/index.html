@@ -8,17 +8,52 @@
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
 <style>
+  /* 深色主题（默认） */
   :root{
-    --bg:#0b0f17; --panel:#141b26; --panel2:#1b2432; --line:#26303f;
-    --txt:#e6edf7; --dim:#8fa0b8; --up:#ff5c5c; --down:#22c55e;
+    --bg:#0b0f17; --panel:#141b26; --panel2:var(--tip-bg); --line:#26303f;
+    --txt:#e6edf7; --dim:var(--axis); --up:#ff5c5c; --down:#22c55e;
     --vix:#ff9f43; --vxn:#54a0ff; --spx:#2ed573; --ndx:#e056fd;
     --sh:#ffd93d; --csi:#ff6b9d; --cnxt:#4ecdc4;
     --m0:#f7b731; --m1:#4b7bec; --m2:#a55eea;
     --accent:#7c5cff;
+    /* 图表专用：网格线 / 轴线 / 面板强调底色 */
+    --grid:var(--grid);
+    --axis:var(--axis);
+    --tip-bg:var(--tip-bg);
+    --tip-border:#26303f;
+    --heat:var(--heat);
+    --heat-bd:var(--heat-bd);
+    --heat-tx:var(--heat-tx);
+    --link:var(--link);
+    --hover-row:var(--hover-row);
+    --side-bg:var(--side-bg);
+    color-scheme:dark;
+  }
+
+  /* 浅色主题 */
+  :root[data-theme="light"]{
+    --bg:#f5f7fa; --panel:#ffffff; --panel2:#eef2f7; --line:#d8e0ea;
+    --txt:#1a2433; --dim:#61748c; --up:#d92d20; --down:#0e9f6e;
+    --vix:#e08a1e; --vxn:#2f6fd0; --spx:#12a150; --ndx:#a337d6;
+    --sh:#c9a227; --csi:#d6336c; --cnxt:#0e9488;
+    --m0:#c47f0a; --m1:#2f6fd0; --m2:#7c4dcc;
+    --accent:#6b4ee6;
+    --grid:rgba(180,195,212,.55);
+    --axis:#61748c;
+    --tip-bg:#ffffff;
+    --tip-border:#d8e0ea;
+    --heat:rgba(217,45,32,.10);
+    --heat-bd:rgba(217,45,32,.28);
+    --heat-tx:#c0392b;
+    --link:#3b6fb0;
+    --hover-row:rgba(107,78,230,.06);
+    --side-bg:rgba(255,255,255,.94);
+    color-scheme:light;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);
-       font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+       font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+       transition:background .18s ease,color .18s ease}
   .wrap{max-width:1340px;margin:0 auto;padding:22px 18px 60px}
 
   header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;
@@ -144,17 +179,17 @@
   .pb-kind{font-size:14.5px;font-weight:600;margin-right:9px}
   .pb-date-inline{font-size:13px;color:var(--dim);margin-right:9px;
                   font-variant-numeric:tabular-nums}
-  .pb-link{font-size:12px;color:#9db4d4;text-decoration:none;
+  .pb-link{font-size:12px;color:var(--link);text-decoration:none;
            border:1px solid var(--line);padding:5px 12px;border-radius:8px;
            white-space:nowrap;transition:.15s}
-  .pb-link:hover{border-color:var(--accent);color:#b9a6ff}
-  .pb-sum{font-size:13.5px;line-height:1.85;color:#cfd9e8;margin-bottom:11px}
+  .pb-link:hover{border-color:var(--accent);color:var(--accent)}
+  .pb-sum{font-size:13.5px;line-height:1.85;color:var(--txt);margin-bottom:11px}
   .pb-topics{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
   .pb-topics.sm{margin:7px 0 0}
   .ptag{font-size:11.5px;padding:3px 10px;border-radius:999px;
         background:var(--panel2);color:var(--dim);border:1px solid var(--line);
         white-space:nowrap}
-  .ptag.hot{background:rgba(255,92,92,.14);color:#ff8a8a;border-color:rgba(255,92,92,.3)}
+  .ptag.hot{background:var(--heat);color:var(--heat-tx);border-color:var(--heat-bd)}
   .ptag.sm{font-size:11px;padding:2px 8px}
   .pb-evidence{font-size:11.5px;color:var(--dim);line-height:1.7}
 
@@ -163,29 +198,54 @@
   .pb-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:720px}
   .pb-table th{text-align:left;padding:11px 14px;color:var(--dim);
                font-weight:500;border-bottom:1px solid var(--line);white-space:nowrap}
-  .pb-table td{padding:12px 14px;border-bottom:1px solid rgba(38,48,63,.5);
-               vertical-align:top;color:#dbe4f0}
+  .pb-table td{padding:12px 14px;border-bottom:1px solid var(--grid);
+               vertical-align:top;color:var(--txt)}
   .pb-table tr:last-child td{border-bottom:0}
-  .pb-table tr:hover td{background:rgba(124,92,255,.05)}
+  .pb-table tr:hover td{background:var(--hover-row)}
   .pb-td-date{white-space:nowrap;color:var(--dim);font-variant-numeric:tabular-nums;
               width:96px}
   .pb-td-title{line-height:1.75}
-  .pb-td-title a{color:#9db4d4;text-decoration:none;white-space:nowrap}
+  .pb-td-title a{color:var(--link);text-decoration:none;white-space:nowrap}
   .pb-td-title a:hover{color:var(--accent);text-decoration:underline}
   .pb-empty{background:var(--panel);border:1px dashed var(--line);border-radius:14px;
             padding:22px;text-align:center;color:var(--dim);font-size:13px;line-height:1.9}
 
-  /* —— 侧栏快捷目录 —— */
-  .side{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:50;
+  /* —— 侧边目录（所有屏幕宽度都可用） —— */
+  .side{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:60;
         display:flex;flex-direction:column;gap:2px;padding:10px 8px;
-        background:rgba(20,27,38,.92);border:1px solid var(--line);border-radius:12px;
-        backdrop-filter:blur(6px);max-width:150px}
-  .side-t{font-size:11px;color:var(--dim);padding:2px 8px 7px;letter-spacing:.5px}
+        background:var(--side-bg);border:1px solid var(--line);border-radius:12px;
+        backdrop-filter:blur(8px);max-width:158px;
+        box-shadow:0 6px 24px rgba(0,0,0,.18);
+        transition:transform .2s ease,opacity .2s ease}
+  .side-t{font-size:11px;color:var(--dim);padding:2px 8px 7px;letter-spacing:.5px;
+          display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .side-x{background:transparent;border:0;color:var(--dim);cursor:pointer;
+          font-size:14px;line-height:1;padding:0 4px;border-radius:4px}
+  .side-x:hover{color:var(--txt);background:var(--panel2)}
   .side-link{display:block;padding:6px 10px;border-radius:7px;font-size:12.5px;
              color:var(--dim);text-decoration:none;transition:.15s;white-space:nowrap}
   .side-link:hover{background:var(--panel2);color:var(--txt)}
-  .side-link.on{background:rgba(124,92,255,.18);color:#b9a6ff}
-  @media(max-width:1400px){ .side{display:none} }
+  .side-link.on{background:var(--heat);color:var(--accent);font-weight:600}
+
+  /* 折叠后的圆形按钮（窄屏或用户手动收起后显示） */
+  .side-fab{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:60;
+            width:40px;height:40px;border-radius:50%;cursor:pointer;
+            background:var(--side-bg);border:1px solid var(--line);color:var(--txt);
+            font-size:17px;display:none;align-items:center;justify-content:center;
+            backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(0,0,0,.2);
+            transition:.15s}
+  .side-fab:hover{border-color:var(--accent);color:var(--accent)}
+  .side-fab.show{display:flex}
+
+  /* 窄屏：默认收起为圆形按钮，点开后浮层展开 */
+  @media(max-width:1500px){
+    .side{transform:translateY(-50%) translateX(-16px);opacity:0;pointer-events:none}
+    .side.open{transform:translateY(-50%) translateX(0);opacity:1;pointer-events:auto}
+  }
+  @media(max-width:600px){
+    .side{max-width:132px;left:8px}
+    .side-link{font-size:12px;padding:5px 8px}
+  }
 
   .foot{font-size:12px;color:var(--dim);line-height:1.9;margin-top:22px}
   .foot code{background:var(--panel2);padding:2px 7px;border-radius:5px;font-size:11.5px}
@@ -203,14 +263,18 @@
       <small>波动率 · 中美指数 · 中国货币供应 M0/M1/M2 ｜ 数据来源：CBOE、纳斯达克、东方财富</small></h1>
     <div class="actions">
       <span class="status" id="status"><span class="dot" id="dot"></span><span id="statusText">就绪</span></span>
+      <button class="ghost" id="btnTheme" title="点击切换主题">🌙 深色</button>
       <button id="btnUpdate">立即更新 / Refresh</button>
       <button class="ghost" id="btnReload">重载数据 / Reload</button>
     </div>
   </header>
 
+  <!-- 侧边目录：窄屏时收起为圆形按钮 -->
+  <button class="side-fab" id="sideFab" title="目录">☰</button>
+
   <div class="warn" id="warn"></div>
 
-  <div class="sect-title">波动率指数 / Volatility Indices</div>
+  <div class="sect-title" id="sec-overview">波动率指数 / Volatility Indices</div>
   <div class="cards" id="cards-vol"></div>
 
   <div class="sect-title">美国指数 / US Indices</div>
@@ -350,6 +414,89 @@ const INITIAL = {{ initial|safe }};
 const SPECS = INITIAL.specs || {};
 const ORDER = INITIAL.order || Object.keys(SPECS);
 const GROUPS = INITIAL.groups || {};
+
+/* ---------- 主题 ---------- */
+/* Chart.js 不认 CSS 变量，必须把当前主题的颜色读出来再传给它。
+   切换主题后统一重绘全部图表。 */
+function themeVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function C(){
+  return {
+    axis:   themeVar('--axis')       || '#8fa0b8',
+    grid:   themeVar('--grid')       || 'rgba(38,48,63,.55)',
+    tipBg:  themeVar('--tip-bg')     || '#1b2432',
+    tipBd:  themeVar('--tip-border') || '#26303f',
+    txt:    themeVar('--txt')        || '#e6edf7',
+    dim:    themeVar('--dim')        || '#8fa0b8',
+  };
+}
+function axTicks(extra){
+  return Object.assign({color:C().axis, font:{size:11}}, extra||{});
+}
+function axGrid(){ return {color:C().grid}; }
+function tipStyle(){
+  return {backgroundColor:C().tipBg, borderColor:C().tipBd, borderWidth:1,
+          titleColor:C().txt, bodyColor:C().txt, padding:10};
+}
+
+function currentTheme(){ return document.documentElement.getAttribute('data-theme') || 'dark'; }
+
+/* 主题色板：随主题切换（深色用亮色，浅色用深色以保证对比度） */
+function seriesColor(sym){
+  const light = currentTheme()==='light';
+  const D = { VIX:'#ff9f43', VXN:'#54a0ff', SPX:'#2ed573', NDX:'#e056fd',
+              SHCOMP:'#ffd93d', CSI300:'#ff6b9d', CHINEXT:'#4ecdc4' };
+  const L = { VIX:'#e08a1e', VXN:'#2f6fd0', SPX:'#12a150', NDX:'#a337d6',
+              SHCOMP:'#c9a227', CSI300:'#d6336c', CHINEXT:'#0e9488' };
+  return (light?L:D)[sym] || '#888';
+}
+function moneyColor(k){
+  const light = currentTheme()==='light';
+  const D = { m0:'#f7b731', m1:'#4b7bec', m2:'#a55eea', scissors:'#df4a37' };
+  const L = { m0:'#c47f0a', m1:'#2f6fd0', m2:'#7c4dcc', scissors:'#c0392b' };
+  return (light?L:D)[k] || '#888';
+}
+function macroColor(group, key){
+  const light = currentTheme()==='light';
+  const D = {
+    CPI:{yoy:'#ff9f43', mom:'#8fa0b8', city_yoy:'#54a0ff', rural_yoy:'#2ed573'},
+    PPI:{yoy:'#e056fd', acc:'#8fa0b8'},
+    PMI:{mfg:'#22c55e', nonmfg:'#54a0ff'},
+    GDP:{yoy:'#ff9f43', primary:'#2ed573', secondary:'#54a0ff', tertiary:'#e056fd'},
+  };
+  const L = {
+    CPI:{yoy:'#e08a1e', mom:'#61748c', city_yoy:'#2f6fd0', rural_yoy:'#12a150'},
+    PPI:{yoy:'#a337d6', acc:'#61748c'},
+    PMI:{mfg:'#0e9f6e', nonmfg:'#2f6fd0'},
+    GDP:{yoy:'#e08a1e', primary:'#12a150', secondary:'#2f6fd0', tertiary:'#a337d6'},
+  };
+  return ((light?L:D)[group]||{})[key] || '#888';
+}
+
+function applyTheme(mode, redraw){
+  let eff = mode;
+  if(mode === 'auto'){
+    eff = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)
+          ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', eff);
+  try{ localStorage.setItem('vixvxn-theme', mode); }catch(e){}
+  const btn=document.getElementById('btnTheme');
+  if(btn){
+    btn.textContent = mode==='dark' ? '🌙 深色' : (mode==='light' ? '☀️ 浅色' : '🌗 跟随系统');
+    btn.title = '点击切换主题（当前：'
+      + (mode==='auto'?'跟随系统':(mode==='dark'?'深色':'浅色')) + '）';
+  }
+  if(redraw !== false) redrawAllCharts();
+}
+
+function redrawAllCharts(){
+  try{ draw(); }catch(e){ console.warn('draw 失败', e); }
+  try{ drawMoney(); }catch(e){ console.warn('drawMoney 失败', e); }
+  try{ drawMacro(); }catch(e){ console.warn('drawMacro 失败', e); }
+}
+
 const COLORS = { VIX:'#ff9f43', VXN:'#54a0ff', SPX:'#2ed573', NDX:'#e056fd',
                  SHCOMP:'#ffd93d', CSI300:'#ff6b9d', CHINEXT:'#4ecdc4' };
 const MCOLORS = { m0:'#f7b731', m1:'#4b7bec', m2:'#a55eea' };
@@ -678,15 +825,15 @@ function drawMoney(){
        ? {type:'time',
           time:{unit:'year', tooltipFormat:'yyyy-MM',
                 displayFormats:{year:'yyyy', month:'yyyy-MM', day:'yyyy-MM'}},
-          ticks:{color:'#8fa0b8',font:{size:11},autoSkip:true,maxTicksLimit:12,maxRotation:0},
-          grid:{color:'rgba(38,48,63,.55)'}}
-       : {ticks:{color:'#8fa0b8',maxTicksLimit:11,autoSkip:true,font:{size:11}},
-          grid:{color:'rgba(38,48,63,.55)'}},
-    y:{position:'left',ticks:{color:'#8fa0b8',font:{size:11},
-         callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:digits})},
-       grid:{color:'rgba(38,48,63,.55)'},
+          ticks:axTicks({font:{size:11},autoSkip:true,maxTicksLimit:12,maxRotation:0}),
+          grid:axGrid()}
+       : {ticks:axTicks({maxTicksLimit:11,autoSkip:true,font:{size:11}}),
+          grid:axGrid()},
+    y:{position:'left',ticks:axTicks({font:{size:11},
+         callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:digits})}),
+       grid:axGrid(),
        ...axisRangeOf(datasets,'y'),
-       title:{display:true,text:yTitle,color:'#8fa0b8',font:{size:11}}}
+       title:{display:true,text:yTitle,color:C().axis,font:{size:11}}}
   };
   /* 叠加上证等 A 股指数时，右轴留给指数点位；否则右轴可用于 M1（双轴模式）。 */
   const idxOn = Object.keys(CN_IDX).some(c=>mOverlay[c] && hasCnIdx(c));
@@ -698,16 +845,16 @@ function drawMoney(){
 
   if(datasets.some(d=>(d.yAxisID||'y')==='y1') && !idxOn){
     scales.y1={position:'right',grid:{drawOnChartArea:false},
-      ticks:{color:'#8fa0b8',font:{size:11},
-        callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:0})},
+      ticks:axTicks({font:{size:11},
+        callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:0})}),
       ...axisRangeOf(datasets,'y1'),
-      title:{display:true,text:'M1 (万亿)',color:'#8fa0b8',font:{size:11}}};
+      title:{display:true,text:'M1 (万亿)',color:C().axis,font:{size:11}}};
   } else if(datasets.some(d=>(d.yAxisID||'y')==='y1')){
     scales.y1={position:'right',grid:{drawOnChartArea:false},
-      ticks:{color:'#8fa0b8',font:{size:11},
-        callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:0})},
+      ticks:axTicks({font:{size:11},
+        callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:0})}),
       ...axisRangeOf(datasets,'y1'),
-      title:{display:true,text:'指数点位',color:'#8fa0b8',font:{size:11}}};
+      title:{display:true,text:'指数点位',color:C().axis,font:{size:11}}};
   }
 
   if(moneyChart) moneyChart.destroy();
@@ -719,7 +866,7 @@ function drawMoney(){
       interaction:{mode:'index', intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#1b2432',borderColor:'#26303f',borderWidth:1,padding:10,
+        tooltip:{...tipStyle(),padding:10,
           callbacks:{label:c=>{
             const v=c.parsed.y;
             if(v===null||v===undefined) return ` ${c.dataset.label}: —`;
@@ -747,12 +894,6 @@ function drawMoney(){
   if(sub) sub.textContent=`${cov} · 最新 ${M.latest.month} · 单位 万亿元`;
 }
 /* ---------- 宏观经济指标 ---------- */
-const MACRO_COLORS = {
-  CPI:{yoy:'#ff9f43', mom:'#8fa0b8', city_yoy:'#54a0ff', rural_yoy:'#2ed573'},
-  PPI:{yoy:'#e056fd', acc:'#8fa0b8'},
-  PMI:{mfg:'#22c55e', nonmfg:'#54a0ff'},
-  GDP:{yoy:'#ff9f43', primary:'#2ed573', secondary:'#54a0ff', tertiary:'#e056fd'},
-};
 let macroChart=null, curMacro='CPI', macroYears=5;
 let macroVisible={};
 
@@ -827,7 +968,7 @@ function renderMacroLegend(){
   macroVisible = macroVisible || {};
   for(const s of d.series){
     const on = macroVisible[curMacro+'.'+s.key] !== false;
-    const c = (MACRO_COLORS[curMacro]||{})[s.key] || '#888';
+    const c = macroColor(curMacro, s.key);
     const lab=document.createElement('label');
     lab.className=on?'on':'';
     lab.innerHTML=`<input type="checkbox" ${on?'checked':''}>
@@ -870,7 +1011,7 @@ function drawMacro(){
   const ds=[];
   for(const s of d.series){
     if(macroVisible && macroVisible[curMacro+'.'+s.key]===false) continue;
-    const c=(MACRO_COLORS[curMacro]||{})[s.key]||'#888';
+    const c=macroColor(curMacro, s.key);
     ds.push({
       type:'line', label:s.label,
       data: s.values.slice(start).map((v,i)=>({x:labels[i], y:v})),
@@ -887,13 +1028,13 @@ function drawMacro(){
   if(curMacro==='PMI') annotations.push(50);
 
   const scales={
-    x:{ticks:{color:'#8fa0b8',font:{size:11},autoSkip:true,maxTicksLimit:12,maxRotation:0},
-       grid:{color:'rgba(38,48,63,.55)'}},
-    y:{position:'left',ticks:{color:'#8fa0b8',font:{size:11},
-         callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:2})},
-       grid:{color:'rgba(38,48,63,.55)'},
+    x:{ticks:axTicks({font:{size:11},autoSkip:true,maxTicksLimit:12,maxRotation:0}),
+       grid:axGrid()},
+    y:{position:'left',ticks:axTicks({font:{size:11},
+         callback:v=>Number(v).toLocaleString('en-US',{maximumFractionDigits:2})}),
+       grid:axGrid(),
        ...axisRangeOf(ds,'y'),
-       title:{display:true,text: d.unit||'',color:'#8fa0b8',font:{size:11}}}
+       title:{display:true,text: d.unit||'',color:C().axis,font:{size:11}}}
   };
 
   if(macroChart) macroChart.destroy();
@@ -903,7 +1044,7 @@ function drawMacro(){
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
       interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},
-        tooltip:{backgroundColor:'#1b2432',borderColor:'#26303f',borderWidth:1,padding:10,
+        tooltip:{...tipStyle(),padding:10,
           callbacks:{label:c=>{
             const v=c.parsed.y;
             if(v===null||v===undefined) return ` ${c.dataset.label}: —`;
@@ -1015,16 +1156,49 @@ function initSideNav(){
     ['sec-macro','CPI / PPI / PMI / GDP'],
     ['sec-politburo','政治局会议'],
   ].filter(([id])=>document.getElementById(id));
-  if(secs.length<2) return;
 
-  const nav=document.createElement('nav');
-  nav.className='side';
-  nav.id='sideNav';
-  nav.innerHTML='<div class="side-t">快捷目录</div>'+
+  const fab=document.getElementById('sideFab');
+  if(secs.length<2){
+    // 板块不足时不显示目录，避免出现只有一个条目的侧栏
+    const old=document.getElementById('sideNav');
+    if(old) old.remove();
+    if(fab) fab.classList.remove('show');
+    return;
+  }
+
+  let nav=document.getElementById('sideNav');
+  if(!nav){
+    nav=document.createElement('nav');
+    nav.className='side';
+    nav.id='sideNav';
+    document.body.appendChild(nav);
+  }
+  nav.innerHTML=
+    '<div class="side-t"><span>目录</span><button class="side-x" id="sideClose" title="收起">✕</button></div>'+
     secs.map(([id,label])=>`<a class="side-link" href="#${id}" data-nav="${id}">${label}</a>`).join('');
-  document.body.appendChild(nav);
 
   const links=[...nav.querySelectorAll('.side-link')];
+
+  /* 收起 / 展开 */
+  const narrow = ()=> window.innerWidth <= 1500;
+  const setOpen=(open)=>{
+    nav.classList.toggle('open', open);
+    if(fab) fab.classList.toggle('show', !open);
+  };
+  // 宽屏默认展开，窄屏默认收起
+  setOpen(!narrow());
+
+  if(fab && !fab._bound){
+    fab._bound=true;
+    fab.addEventListener('click',()=>setOpen(true));
+  }
+  const closeBtn=document.getElementById('sideClose');
+  if(closeBtn) closeBtn.onclick=()=>setOpen(false);
+
+  // 点击目录项后，窄屏自动收起，避免挡住内容
+  links.forEach(a=>a.addEventListener('click',()=>{ if(narrow()) setOpen(false); }));
+
+  /* 滚动高亮当前板块 */
   const upd=()=>{
     const y=window.scrollY+110;
     let cur=secs[0][0];
@@ -1034,8 +1208,21 @@ function initSideNav(){
     }
     links.forEach(a=>a.classList.toggle('on',a.dataset.nav===cur));
   };
-  window.addEventListener('scroll',upd,{passive:true});
-  window.addEventListener('resize',upd,{passive:true});
+  if(!window._sideNavBound){
+    window._sideNavBound=true;
+    window.addEventListener('scroll',()=>window._sideNavUpd&&window._sideNavUpd(),{passive:true});
+    window.addEventListener('resize',()=>{
+      if(window._sideNavUpd) window._sideNavUpd();
+      // 窗口尺寸变化时重置开合状态
+      const n=document.getElementById('sideNav');
+      const f=document.getElementById('sideFab');
+      if(!n) return;
+      const open=window.innerWidth>1500;
+      n.classList.toggle('open',open);
+      if(f) f.classList.toggle('show',!open);
+    },{passive:true});
+  }
+  window._sideNavUpd=upd;
   upd();
 }
 
@@ -1151,18 +1338,18 @@ function draw(){
         ? '左轴 <b>波动率</b>（VIX/VXN）· 右轴 <b>美国指数</b>（SPX/NDX）。实线=波动率，虚线=指数。'
         : '单轴显示。');
   const scales={
-    x:{grid:{color:'rgba(38,48,63,.55)'},ticks:{color:'#8fa0b8',maxTicksLimit:10,autoSkip:true}},
-    y:{position:'left',grid:{color:'rgba(38,48,63,.55)'},
-       ticks:{color:'#8fa0b8',callback:v=>currentMode==='pct'?v:tickShort(v)},
+    x:{grid:axGrid(),ticks:axTicks({maxTicksLimit:10,autoSkip:true})},
+    y:{position:'left',grid:axGrid(),
+       ticks:axTicks({callback:v=>currentMode==='pct'?v:tickShort(v)}),
        ...axisRange(datasets,'y'),
        title:{display:true,text:currentMode==='pct'?'归一化 (起点=100)':'波动率 / Volatility',
-              color:'#8fa0b8',font:{size:11}}}
+              color:C().axis,font:{size:11}}}
   };
   if(currentMode==='raw' && used.y1){
     scales.y1={position:'right',grid:{drawOnChartArea:false},
-               ticks:{color:'#8fa0b8',callback:v=>tickShort(v)},
+               ticks:axTicks({callback:v=>tickShort(v)}),
                ...axisRange(datasets,'y1'),
-               title:{display:true,text:'美国指数 / US',color:'#8fa0b8',font:{size:11}}};
+               title:{display:true,text:'美国指数 / US',color:C().axis,font:{size:11}}};
   }
 
   if(chart) chart.destroy();
@@ -1172,8 +1359,8 @@ function draw(){
     options:{responsive:true,maintainAspectRatio:false,animation:{duration:350},
       interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},
-        tooltip:{backgroundColor:'#1b2432',borderColor:'#26303f',borderWidth:1,
-          titleColor:'#e6edf7',bodyColor:'#e6edf7',padding:10,
+        tooltip:{...tipStyle(),
+          
           callbacks:{label:c=>` ${c.dataset.label}: ${
             c.parsed.y===null?'—':Number(c.parsed.y).toLocaleString('en-US',
               {maximumFractionDigits:2})}${currentMode==='pct'?' (起点=100)':''}`}}},
@@ -1266,6 +1453,14 @@ function onSafe(id, fn){
   });
 }
 
+/* 主题切换：深色 → 浅色 → 跟随系统 循环 */
+onSafe('btnTheme', ()=>{
+  const order=['dark','light','auto'];
+  const cur=localStorage.getItem('vixvxn-theme') || 'dark';
+  const next=order[(order.indexOf(cur)+1) % order.length];
+  applyTheme(next);
+});
+
 document.getElementById('btnUpdate').onclick=doUpdate;
 document.getElementById('btnReload').onclick=async()=>{
   for(const k in cache) delete cache[k];
@@ -1357,6 +1552,13 @@ onSafe('macroRange', e=>{
 
 // 初始渲染（?days=365&mode=pct&myears=10&hide=SPX,NDX）
 (function(){
+ try{
+  /* 主题：URL 参数 > 本地记忆 > 跟随系统
+     必须在渲染图表之前应用，否则首屏图表会用错颜色。 */
+  const qsTheme=new URLSearchParams(location.search).get('theme');
+  const saved=(()=>{ try{ return localStorage.getItem('vixvxn-theme'); }catch(e){ return null; } })();
+  applyTheme(qsTheme || saved || 'auto', false);
+
   const qs=new URLSearchParams(location.search);
   const d=parseInt(qs.get('days'),10);
   if(!isNaN(d)&&[30,90,365,1825,0].includes(d)){
@@ -1409,7 +1611,8 @@ onSafe('macroRange', e=>{
   renderCards(INITIAL); renderLegend(); renderMeta(INITIAL);
   renderMoneyCards(); draw(); drawMoney();
   renderMacroCards(); renderMacroLegend(); drawMacro(); renderPolitburo();
-  initSideNav();
+  try{ initSideNav(); }
+  catch(navErr){ console.error('[init] 侧栏初始化失败:', navErr); }
 
   if(INITIAL.update_state&&INITIAL.update_state.running){
     setStatus(true,'后台更新中… / background update running');
@@ -1441,6 +1644,13 @@ onSafe('macroRange', e=>{
       }catch(e){ /* 忽略瞬时错误，继续重试 */ }
     }, 4000);
   }
+ }catch(initErr){
+   console.error('[init] 初始化失败:', initErr);
+   try{
+     document.getElementById('statusText').textContent =
+       '初始化错误: ' + (initErr && initErr.message || initErr);
+   }catch(e){}
+ }
 })();
 </script>
 </body>
