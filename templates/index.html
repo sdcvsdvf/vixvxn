@@ -1419,6 +1419,49 @@ async function load(days){
   renderMacroCards(); renderMacroLegend(); drawMacro(); renderPolitburo();
 }
 
+/* ---------- 自动轮询报价 ---------- */
+/* 页面开着时，每 REFRESH_MS 调一次轻量接口刷新报价快照（延时 15 分钟的数据源，
+   5 分钟轮询足够保持新鲜）。失败静默重试，不打扰用户；
+   服务器端有 120 秒节流，重复调用会被跳过而不是排队。 */
+const REFRESH_MS = 5 * 60 * 1000;
+let refreshTimer = null;
+
+async function pollQuotes(){
+  try{
+    const r = await fetch('/api/refresh-quotes', {method:'POST'});
+    if(!r.ok) return;                       // 409/5xx 静默跳过
+    const j = await r.json();
+    if(!j.ok || !j.series) return;
+
+    // 只更新报价相关字段，不重抓历史（历史没变）
+    let changed = false;
+    for(const sym of ORDER){
+      const s = j.series[sym];
+      const local = moneyCache && moneyCache.series && moneyCache.series[sym];
+      if(!s || !local) continue;
+      if(local.quote) local.quote.price = s.price;
+      if(s.change !== undefined){ local.change = s.change; changed = true; }
+      if(s.change_percent !== undefined) local.change_percent = s.change_percent;
+      if(s.quote_fetched_at && local.quote) local.quote.fetched_at = s.quote_fetched_at;
+    }
+    if(changed){
+      // 卡片直接改 DOM，避免整页重绘闪烁
+      renderCards(moneyCache);
+      setStatus(false,'已自动刷新 / auto-refreshed');
+      setTimeout(()=>{ setStatus(false,'就绪'); }, 4000);
+    }
+  }catch(e){ /* 网络抖动静默重试 */ }
+}
+
+function startPolling(){
+  if(refreshTimer) return;
+  refreshTimer = setInterval(pollQuotes, REFRESH_MS);
+  // 页面重新可见时立即刷一次（休眠唤醒后数据可能旧了）
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden) pollQuotes();
+  });
+}
+
 async function doUpdate(){
   const btn=document.getElementById('btnUpdate');
   btn.disabled=true; setStatus(true,'正在抓取数据… / Fetching…');
@@ -1619,6 +1662,9 @@ onSafe('macroRange', e=>{
   try{ initSideNav(); }
   catch(navErr){ console.error('[init] 侧栏初始化失败:', navErr); }
 
+  // 启动自动报价轮询（仅当数据已就绪；数据未就绪时由上面的初始化轮询接管）
+  if(!noData) startPolling();
+
   if(INITIAL.update_state&&INITIAL.update_state.running){
     setStatus(true,'后台更新中… / background update running');
   }
@@ -1642,6 +1688,7 @@ onSafe('macroRange', e=>{
           for(const k in cache) delete cache[k];
           await load(currentDays);
           setStatus(false,'数据就绪 / ready');
+          startPolling();          // 数据就绪后启动报价自动刷新
         } else if(tries>=90){
           clearInterval(timer);
           setStatus(false,'数据初始化超时，请刷新页面 / timeout, please refresh');

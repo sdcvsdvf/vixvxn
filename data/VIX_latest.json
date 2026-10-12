@@ -1,14 +1,14 @@
 {
   "symbol": "VIX",
-  "source_timestamp": "2026-10-12 12:06:19",
-  "last_trade_time": "2026-10-09T16:15:01",
-  "price": 15.45,
-  "change": 0.61,
-  "change_percent": 4.1105,
-  "open": 15.14,
-  "high": 15.22,
-  "low": 14.77,
+  "source_timestamp": "2026-10-12 14:42:25",
+  "last_trade_time": "2026-10-12T10:27:16",
+  "price": 15.33,
+  "change": 0.49,
+  "change_percent": 3.3019,
+  "open": 15.36,
+  "high": 15.44,
+  "low": 15.26,
   "prev_close": 14.84,
-  "iv30": 72.883,
-  "fetched_at": "2026-10-12T20:06:41+08:00"
+  "iv30": 82.039,
+  "fetched_at": "2026-10-12T22:43:17+08:00"
 }

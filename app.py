@@ -278,6 +278,68 @@ def api_probe():
     return jsonify({"ok": True})
 
 
+# ---------------------------------------------------------------- 轻量报价刷新 / quote refresh
+# 页面轮询用的轻量接口：只刷新报价快照，不重抓历史 CSV。
+# 历史数据每天更新一次足够；报价（延时 15 分钟）用高频轮询保持新鲜。
+# 有节流与互斥锁，避免被并发请求打爆上游。
+
+_quote_lock = threading.Lock()
+_last_quote_refresh = [0.0]
+QUOTE_MIN_INTERVAL = 120      # 两次报价刷新最小间隔（秒）
+
+
+def _refresh_quotes_job():
+    """只更新各标的的报价快照（不抓历史）。"""
+    with _quote_lock:
+        now = time.time()
+        if now - _last_quote_refresh[0] < QUOTE_MIN_INTERVAL:
+            return {"skipped": True, "reason": "too soon"}
+        _last_quote_refresh[0] = now
+
+    updated, errors = [], []
+    for sym in fd.SYMBOLS:
+        try:
+            spec = fd.SPECS[sym]
+            if spec["quote"] == "derived":
+                # 中国指数：报价取自 K 线最后一根（盘中即实时价），
+                # 需要重新抓一份日线（增量合并，只加最新一根）
+                res = fd.update_symbol(sym, full=False)
+            else:
+                rows = fd.load_history(sym)
+                quote = fd.fetch_quote(sym, rows)
+                fd.save_quote(sym, quote)
+                res = {"symbol": sym, "quote": quote}
+            q = res.get("quote") or {}
+            updated.append({"symbol": sym, "price": q.get("price"),
+                            "change": q.get("change"),
+                            "change_percent": q.get("change_percent")})
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"symbol": sym, "error": str(exc)[:120]})
+    return {"updated": updated, "errors": errors,
+            "at": dt.datetime.now(fd.CST).strftime("%Y-%m-%d %H:%M:%S")}
+
+
+@app.route("/api/refresh-quotes", methods=["POST"])
+def api_refresh_quotes():
+    """页面轮询：轻量刷新报价快照。带节流，频繁调用会被跳过而不是排队。"""
+    if _update_state["running"]:
+        return jsonify({"ok": False, "busy": True,
+                        "message": "全量更新进行中 / full update running"}), 409
+    result = _refresh_quotes_job()
+    payload = build_payload(days=30)
+    return jsonify({
+        "ok": True,
+        "refresh": result,
+        "series": {k: {
+            "price": v.get("quote", {}).get("price") if v.get("quote") else v.get("last_close"),
+            "change": v.get("change"),
+            "change_percent": v.get("change_percent"),
+            "quote_fetched_at": (v.get("quote") or {}).get("fetched_at"),
+        } for k, v in payload["series"].items()},
+        "meta": payload["meta"],
+    })
+
+
 @app.route("/api/update", methods=["POST"])
 def api_update():
     """
