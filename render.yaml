@@ -4,17 +4,20 @@
 #   1. 把本目录推到 GitHub 仓库
 #   2. Render → New → Blueprint → 选该仓库（会自动读取本文件）
 #
-# 免费套餐说明：
-#   - Web Service 免费实例闲置 15 分钟后休眠，下次访问约 30–60 秒冷启动
-#   - 免费实例没有持久磁盘，容器重启后本地写入会丢失
-#     因此这里用「镜像内置数据 + 每日定时抓取」的方式，配合 cron job 更新
+# 关于免费套餐（重要）：
+#   - Render 的 Cron Job **不支持 free 套餐**（只有 Starter 起）。
+#     因此本配置只创建 1 个免费的 Web Service，每日更新改由
+#     「进程内定时器」+「GitHub Actions 外部触发」两条免费途径完成。
+#   - 免费 Web 实例闲置 15 分钟后休眠，下次访问约 30–60 秒冷启动。
+#   - 免费实例无持久磁盘，容器重启后数据目录会清空，
+#     但 AUTO_SEED=1 会在启动时自动重新抓取（约 90 秒），数据不会永久丢失。
 services:
   - type: web
     name: vixvxn-dashboard
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    region: singapore            # 离国内较近；可选 oregon / frankfurt 等
+    region: singapore            # 离国内较近；若该区域不可用可改 oregon / frankfurt
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
@@ -22,31 +25,21 @@ services:
         value: 8080
       - key: HOST
         value: 0.0.0.0
-      # 免费实例无持久磁盘，用容器内目录即可（重启后重新抓取）
       - key: DATA_DIR
         value: /data
+      - key: LOG_DIR
+        value: /data/logs
       - key: AUTO_SEED
         value: "1"
-      # 关闭进程内定时器：免费实例会休眠，定时器不可靠，改用下面的 cron job
+      # 打开进程内定时器：实例醒着时每天 06:10（北京时间）自动抓一次。
+      # 休眠期间不会触发，但外部 GitHub Actions 会补上（见 .github/workflows/daily-update.yml）。
       - key: VIXVXN_SCHEDULER
-        value: "0"
-
-  # 每天定时抓取并更新数据。
-  # 免费套餐的 cron job 与 web 服务不共享文件系统，
-  # 所以它的作用是「保活 + 触发」：调用 web 服务的更新接口。
-  - type: cron
-    name: vixvxn-daily-update
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
-    region: singapore
-    schedule: "10 22 * * *"      # UTC 22:10 = 北京时间 06:10
-    dockerCommand: >
-      python -c "import os,urllib.request;
-      url=os.environ['TARGET_URL']+'/api/update'+(('?token='+os.environ['ADMIN_TOKEN']) if os.environ.get('ADMIN_TOKEN') else '');
-      print(urllib.request.urlopen(urllib.request.Request(url,method='POST'),timeout=120).read().decode())"
-    envVars:
-      - key: TARGET_URL
-        sync: false              # 部署后在面板填入 web 服务的网址
+        value: "1"
+      - key: DAILY_HOUR
+        value: "6"
+      - key: DAILY_MINUTE
+        value: "10"
+      # 可选：设置后手动更新接口需要 ?token=xxx，防止陌生人反复触发抓取。
+      # 建议在 Render 面板里填一个自己的值（这里留空表示不校验）。
       - key: ADMIN_TOKEN
-        sync: false              # 可选；与 web 服务设成同一个值
+        sync: false
