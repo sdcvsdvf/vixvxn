@@ -270,6 +270,14 @@ def _run_update(trigger: str, full: bool = False):
             _update_state["last_finished"] = dt.datetime.now(fd.CST).strftime("%Y-%m-%d %H:%M:%S")
 
 
+@app.route("/api/_probe", methods=["POST"])
+def api_probe():
+    """临时诊断端点：接收浏览器端回传的测试结果并写入日志。"""
+    payload = request.get_json(force=True, silent=True) or {}
+    fd.log("PROBE " + json.dumps(payload, ensure_ascii=False))
+    return jsonify({"ok": True})
+
+
 @app.route("/api/update", methods=["POST"])
 def api_update():
     """

@@ -10,23 +10,24 @@
 <style>
   /* 深色主题（默认） */
   :root{
-    --bg:#0b0f17; --panel:#141b26; --panel2:var(--tip-bg); --line:#26303f;
-    --txt:#e6edf7; --dim:var(--axis); --up:#ff5c5c; --down:#22c55e;
+    --bg:#0b0f17; --panel:#141b26; --panel2:#1b2432; --line:#26303f;
+    --txt:#e6edf7; --dim:#8fa0b8; --up:#ff5c5c; --down:#22c55e;
     --vix:#ff9f43; --vxn:#54a0ff; --spx:#2ed573; --ndx:#e056fd;
     --sh:#ffd93d; --csi:#ff6b9d; --cnxt:#4ecdc4;
     --m0:#f7b731; --m1:#4b7bec; --m2:#a55eea;
     --accent:#7c5cff;
-    /* 图表专用：网格线 / 轴线 / 面板强调底色 */
-    --grid:var(--grid);
-    --axis:var(--axis);
-    --tip-bg:var(--tip-bg);
+    /* 图表与组件专用色 */
+    --grid:rgba(38,48,63,.55);
+    --axis:#8fa0b8;
+    --tip-bg:#1b2432;
     --tip-border:#26303f;
-    --heat:var(--heat);
-    --heat-bd:var(--heat-bd);
-    --heat-tx:var(--heat-tx);
-    --link:var(--link);
-    --hover-row:var(--hover-row);
-    --side-bg:var(--side-bg);
+    --heat:rgba(255,92,92,.14);
+    --heat-bd:rgba(255,92,92,.3);
+    --heat-tx:#ff8a8a;
+    --link:#9db4d4;
+    --hover-row:rgba(124,92,255,.05);
+    --side-bg:rgba(20,27,38,.92);
+    --warn-bg:#3a2412; --warn-bd:#6b4415; --warn-tx:#ffcf94;
     color-scheme:dark;
   }
 
@@ -48,6 +49,7 @@
     --link:#3b6fb0;
     --hover-row:rgba(107,78,230,.06);
     --side-bg:rgba(255,255,255,.94);
+    --warn-bg:#fff4e5; --warn-bd:#e6c08a; --warn-tx:#8a5a00;
     color-scheme:light;
   }
   *{box-sizing:border-box}
@@ -65,7 +67,8 @@
          padding:9px 16px;font-size:14px;cursor:pointer;transition:.15s}
   button:hover{filter:brightness(1.12)}
   button:disabled{opacity:.5;cursor:not-allowed}
-  button.ghost{background:#222c3c;color:var(--txt)}
+  button.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  button.ghost:hover{border-color:var(--accent);color:var(--accent)}
 
   .status{font-size:12px;color:var(--dim)}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
@@ -104,8 +107,10 @@
   .chart-head h3 em{font-style:normal;color:var(--dim);font-size:12px;font-weight:400}
   .ctrls{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
   .ranges{display:flex;gap:6px}
-  .ranges button{background:#222c3c;color:var(--dim);padding:6px 12px;font-size:12.5px}
-  .ranges button.on{background:var(--accent);color:#fff}
+  .ranges button{background:var(--panel2);color:var(--dim);padding:6px 12px;
+                 font-size:12.5px;border:1px solid var(--line)}
+  .ranges button:hover{border-color:var(--accent);color:var(--txt)}
+  .ranges button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   .legend{display:flex;gap:13px;flex-wrap:wrap;align-items:center;
           padding:10px 2px 2px;font-size:13px}
   .legend label{display:flex;align-items:center;gap:6px;cursor:pointer;
@@ -154,7 +159,7 @@
   .mcard-hd .sym i{width:9px;height:9px;border-radius:50%;display:inline-block}
   .mcard-hd .sym small{font-size:11.5px;color:var(--dim);font-weight:400}
   .badge{font-size:11.5px;padding:3px 9px;border-radius:999px;
-         background:#222c3c;color:var(--dim);white-space:nowrap}
+         background:var(--panel2);color:var(--dim);white-space:nowrap}
   .badge.l5{background:rgba(255,92,92,.16);color:var(--up)}
   .badge.l2{background:rgba(34,197,94,.16);color:var(--down)}
   .big-row{display:flex;align-items:baseline;gap:12px;margin:10px 0 4px;flex-wrap:wrap}
@@ -249,7 +254,7 @@
 
   .foot{font-size:12px;color:var(--dim);line-height:1.9;margin-top:22px}
   .foot code{background:var(--panel2);padding:2px 7px;border-radius:5px;font-size:11.5px}
-  .warn{background:#3a2412;border:1px solid #6b4415;color:#ffcf94;
+  .warn{background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-tx);
         padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none}
   @media(max-width:600px){.price{font-size:24px}.metrics{grid-template-columns:repeat(2,1fr)}
     .canvas-wrap{height:280px}.wrap{padding:16px 12px 40px}}
